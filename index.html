@@ -908,8 +908,11 @@ let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério'
 
 // Carregar ao iniciar
 window.addEventListener('load', function() {
-  carregarConfiguracao();
-  carregarDadosPlanilha();
+  setTimeout(() => {
+    carregarConfiguracao();
+    carregarConfigCampos();
+    carregarDadosPlanilha();
+  }, 500);
 });
 
 // ============================================
@@ -1316,7 +1319,7 @@ function switchTab(tabName) {
     consulta: 'Consultar Livros',
     adicionar: 'Adicionar Livro',
     relatorios: 'Relatórios',
-    configuracao: 'Configuração'
+    config: 'Configuração'
   };
   document.getElementById('pageTitle').textContent = titles[tabName];
   
@@ -1340,8 +1343,9 @@ function switchTab(tabName) {
     }
   }
   
-  if (tabName === 'configuracao') {
+  if (tabName === 'config') {
     carregarConfiguracao();
+    carregarConfigCampos();
   }
 }
 
@@ -1409,6 +1413,14 @@ function carregarConfigCampos() {
 
 function renderizarConfigCampos() {
   const container = document.getElementById('camposConfig');
+  const listaCategorias = document.getElementById('listaCategorias');
+  
+  if (!container || !listaCategorias) {
+    console.log('Elementos não encontrados ainda');
+    setTimeout(renderizarConfigCampos, 100);
+    return;
+  }
+  
   container.innerHTML = camposDisponiveis.map(campo => `
     <div style="padding: 12px; background: var(--color-bg-light); border-radius: 6px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
       <input 
@@ -1422,7 +1434,6 @@ function renderizarConfigCampos() {
     </div>
   `).join('');
 
-  const listaCategorias = document.getElementById('listaCategorias');
   listaCategorias.innerHTML = categoriasList.map((cat, idx) => `
     <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #dbeafe; color: var(--color-primary); border-radius: 6px; font-size: 13px; font-weight: 500;">
       ${cat}
