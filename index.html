@@ -1098,35 +1098,15 @@ async function adicionarLivro(e) {
   // Enviar para Apps Script
   await salvarNoAppsScript(novoLivro);
   
-  // Mudar para verde
-  atualizarSyncStatus('sincronizado', 'Sincronizado');
-  
   document.getElementById('formAdicionar').reset();
   switchTab('consulta');
   
-  alert('✅ Livro salvo! Atualizando lista...');
+  alert('✅ Livro salvo! Sincronizando...');
   
-  // Sincronizar com retry
-  let tentativas = 0;
-  const sincronizarComRetry = async () => {
-    tentativas++;
-    const tamanhoAntes = livros.length;
-    
-    await carregarDadosPlanilha();
-    
-    const tamanhoDepois = livros.length;
-    
-    // Se não atualizou e ainda temos tentativas, tentar novamente
-    if (tamanhoDepois === tamanhoAntes && tentativas < 5) {
-      console.log(`Tentativa ${tentativas} de sincronização...`);
-      setTimeout(sincronizarComRetry, 2000);
-    } else {
-      console.log('Sincronização concluída!');
-    }
-  };
-  
-  // Primeira tentativa após 5 segundos
-  setTimeout(sincronizarComRetry, 5000);
+  // Aguardar 3 segundos e clicar o botão sincronizar
+  setTimeout(() => {
+    sincronizar();
+  }, 3000);
 }
 
 async function deletarLivro() {
@@ -1135,11 +1115,12 @@ async function deletarLivro() {
     atualizarSyncStatus('sincronizando', 'Deletando...');
     await deletarDoAppsScript(livroSelecionado.id);
     
-    // Considerar sucesso mesmo sem resposta (mode: 'no-cors')
     fecharModal();
-    alert('✅ Livro deletado! Carregando em 2 segundos...');
-    setTimeout(async () => {
-      await carregarDadosPlanilha();
+    alert('✅ Livro deletado! Sincronizando...');
+    
+    // Aguardar 2 segundos e sincronizar
+    setTimeout(() => {
+      sincronizar();
     }, 2000);
   }
 }
