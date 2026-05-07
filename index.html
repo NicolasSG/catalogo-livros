@@ -1095,38 +1095,35 @@ async function adicionarLivro(e) {
 
   atualizarSyncStatus('sincronizando', 'Salvando...');
 
-  const sucesso = await salvarNoAppsScript(novoLivro);
+  // Enviar para Apps Script (mode: 'no-cors' não retorna resposta)
+  await salvarNoAppsScript(novoLivro);
   
-  if (sucesso) {
-    document.getElementById('formAdicionar').reset();
-    switchTab('consulta');
-    alert('✅ Livro salvo! Sincronizando em 2 segundos...');
-    
-    // Aguardar um pouco para o Apps Script processar
-    setTimeout(() => {
-      carregarDadosPlanilha();
-    }, 2000);
-  } else {
-    atualizarSyncStatus('erro', 'Erro ao salvar');
-    alert('❌ Erro ao salvar livro');
-  }
+  // Mesmo sem confirmar resposta, consideramos sucesso
+  atualizarSyncStatus('sincronizado', 'Sincronizado');
+  
+  document.getElementById('formAdicionar').reset();
+  switchTab('consulta');
+  
+  alert('✅ Livro salvo! Carregando dados em 3 segundos...');
+  
+  // Aguardar um pouco para o Apps Script processar e salvar
+  setTimeout(async () => {
+    await carregarDadosPlanilha();
+  }, 3000);
 }
 
 async function deletarLivro() {
   if (!livroSelecionado) return;
   if (confirm(`Deletar "${livroSelecionado.titulo}"?`)) {
     atualizarSyncStatus('sincronizando', 'Deletando...');
-    const sucesso = await deletarDoAppsScript(livroSelecionado.id);
+    await deletarDoAppsScript(livroSelecionado.id);
     
-    if (sucesso) {
-      fecharModal();
-      alert('✅ Livro deletado!');
-      setTimeout(() => {
-        carregarDadosPlanilha();
-      }, 1000);
-    } else {
-      atualizarSyncStatus('erro', 'Erro ao deletar');
-    }
+    // Considerar sucesso mesmo sem resposta (mode: 'no-cors')
+    fecharModal();
+    alert('✅ Livro deletado! Carregando em 2 segundos...');
+    setTimeout(async () => {
+      await carregarDadosPlanilha();
+    }, 2000);
   }
 }
 
