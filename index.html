@@ -664,7 +664,7 @@
       <span>📊</span>
       <span>Relatórios</span>
     </button>
-    <button class="nav-item" onclick="switchTab('configuracao')">
+    <button class="nav-item" onclick="switchTab('config')">
       <span>⚙️</span>
       <span>Configuração</span>
     </button>
@@ -804,8 +804,8 @@
       </div>
 
       <!-- ABA CONFIGURACAO -->
-      <div id="tab-configuracao" class="tab-content">
-        <div style="max-width: 600px;">
+      <div id="tab-config" class="tab-content">
+        <div style="max-width: 800px;">
           <div class="config-section">
             <h3>🔗 Configuração Google Sheets</h3>
             <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">
@@ -835,6 +835,36 @@
 
             <div id="statusConfig" style="margin-top: 16px; padding: 12px; border-radius: 6px; display: none;"></div>
           </div>
+
+          <div class="config-section">
+            <h3>📋 Campos do Formulário</h3>
+            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">
+              Selecione quais campos deseja no formulário:
+            </p>
+            <div id="camposConfig" style="display: grid; gap: 12px;">
+              <!-- Preenchido por JavaScript -->
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+              <button class="primary" onclick="salvarConfigCampos()" style="flex: 1;">✅ Salvar campos</button>
+              <button onclick="restaurarConfigPadrao()">↻ Restaurar padrão</button>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3>🏷️ Categorias</h3>
+            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">
+              Adicione ou remova categorias:
+            </p>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+              <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px;">
+              <button class="primary" onclick="adicionarCategoria()">Adicionar</button>
+            </div>
+
+            <div id="listaCategorias" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <!-- Preenchido por JavaScript -->
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -860,12 +890,21 @@
 
 <script>
 // ============================================
-// CONFIGURAÇÃO
+// VARIÁVEIS GLOBAIS
 // ============================================
 let livros = [];
 let livroSelecionado = null;
 let appsScriptUrl = '';
 let googleSheetsId = '';
+
+const camposDisponiveis = [
+  { id: 'editora', label: 'Editora', obrigatorio: false },
+  { id: 'resumo', label: 'Resumo', obrigatorio: false },
+  { id: 'foto', label: 'URL da capa', obrigatorio: false }
+];
+
+let camposAtivos = camposDisponiveis.map(c => c.id);
+let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico'];
 
 // Carregar ao iniciar
 window.addEventListener('load', function() {
@@ -1352,6 +1391,117 @@ function exportarDados() {
   a.download = 'catalogo_livros.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ============================================
+// GERENCIAMENTO DE CAMPOS
+// ============================================
+function carregarConfigCampos() {
+  const config = localStorage.getItem('configCampos');
+  if (config) {
+    const parsed = JSON.parse(config);
+    if (parsed.camposAtivos) camposAtivos = parsed.camposAtivos;
+    if (parsed.categorias) categoriasList = parsed.categorias;
+  }
+  renderizarConfigCampos();
+  atualizarFormulario();
+}
+
+function renderizarConfigCampos() {
+  const container = document.getElementById('camposConfig');
+  container.innerHTML = camposDisponiveis.map(campo => `
+    <div style="padding: 12px; background: var(--color-bg-light); border-radius: 6px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+      <input 
+        type="checkbox" 
+        id="checkbox-${campo.id}" 
+        ${camposAtivos.includes(campo.id) ? 'checked' : ''}
+        onchange="atualizarCamposAtivos()"
+      >
+      <label for="checkbox-${campo.id}" style="flex: 1; font-size: 14px; color: var(--color-text-dark); cursor: pointer; margin: 0;">${campo.label}</label>
+      ${campo.obrigatorio ? '<span style="font-size: 12px; color: var(--color-danger);">*Obrigatório</span>' : ''}
+    </div>
+  `).join('');
+
+  const listaCategorias = document.getElementById('listaCategorias');
+  listaCategorias.innerHTML = categoriasList.map((cat, idx) => `
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #dbeafe; color: var(--color-primary); border-radius: 6px; font-size: 13px; font-weight: 500;">
+      ${cat}
+      <button type="button" onclick="removerCategoria(${idx})" style="background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 16px; padding: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">×</button>
+    </div>
+  `).join('');
+}
+
+function atualizarCamposAtivos() {
+  camposAtivos = camposDisponiveis
+    .filter(c => document.getElementById(`checkbox-${c.id}`).checked)
+    .map(c => c.id);
+}
+
+function salvarConfigCampos() {
+  const config = {
+    camposAtivos: camposAtivos,
+    categorias: categoriasList
+  };
+  localStorage.setItem('configCampos', JSON.stringify(config));
+  alert('✅ Configuração salva!');
+  atualizarFormulario();
+}
+
+function restaurarConfigPadrao() {
+  if (confirm('Tem certeza? Isso vai restaurar todas as configurações para o padrão.')) {
+    camposAtivos = camposDisponiveis.map(c => c.id);
+    categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico'];
+    salvarConfigCampos();
+    renderizarConfigCampos();
+  }
+}
+
+function atualizarFormulario() {
+  const selectCategoria = document.getElementById('formCategoria');
+  
+  const optionsHtml = '<option value="">Escolha uma categoria</option>' + 
+    categoriasList.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+  selectCategoria.innerHTML = optionsHtml;
+  
+  const mapeoPorId = {
+    'editora': 'formEditora',
+    'resumo': 'formResumo',
+    'foto': 'formFoto'
+  };
+  
+  Object.entries(mapeoPorId).forEach(([campoId, elementId]) => {
+    const elemento = document.getElementById(elementId);
+    if (elemento) {
+      const pai = elemento.parentElement;
+      pai.style.display = camposAtivos.includes(campoId) ? 'block' : 'none';
+    }
+  });
+}
+
+function adicionarCategoria() {
+  const input = document.getElementById('novaCategoria');
+  const novaCategoria = input.value.trim();
+  
+  if (!novaCategoria) {
+    alert('Digite um nome para a categoria');
+    return;
+  }
+  
+  if (categoriasList.includes(novaCategoria)) {
+    alert('Esta categoria já existe');
+    return;
+  }
+  
+  categoriasList.push(novaCategoria);
+  input.value = '';
+  renderizarConfigCampos();
+}
+
+function removerCategoria(index) {
+  if (confirm(`Tem certeza que deseja remover "${categoriasList[index]}"?`)) {
+    categoriasList.splice(index, 1);
+    renderizarConfigCampos();
+  }
 }
 </script>
 
