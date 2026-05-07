@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Catálogo de Livros - Biblioteca</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -23,6 +24,7 @@
       --color-border: #e5e7eb;
       --color-success: #10b981;
       --color-danger: #ef4444;
+      --color-warning: #f59e0b;
     }
 
     body {
@@ -122,6 +124,31 @@
     .header-actions {
       display: flex;
       gap: 12px;
+      align-items: center;
+    }
+
+    .sync-status {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sync-status.sincronizado {
+      background: #dcfce7;
+      color: var(--color-success);
+    }
+
+    .sync-status.sincronizando {
+      background: #fef3c7;
+      color: var(--color-warning);
+    }
+
+    .sync-status.erro {
+      background: #fee2e2;
+      color: var(--color-danger);
     }
 
     .header-actions button {
@@ -152,6 +179,33 @@
 
     .tab-content.active {
       display: block;
+    }
+
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .alert.info {
+      background: #dbeafe;
+      color: var(--color-primary);
+      border: 1px solid #93c5fd;
+    }
+
+    .alert.warning {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
+    .alert.error {
+      background: #fee2e2;
+      color: var(--color-danger);
+      border: 1px solid #fecaca;
     }
 
     .stats {
@@ -385,10 +439,6 @@
       justify-content: center;
     }
 
-    .modal-close:hover {
-      color: var(--color-text-dark);
-    }
-
     .modal-header {
       font-size: 20px;
       font-weight: 600;
@@ -541,26 +591,6 @@
       margin-top: 20px;
     }
 
-    .relatorio-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 12px 0;
-      border-bottom: 1px solid var(--color-border);
-    }
-
-    .relatorio-item:last-child {
-      border-bottom: none;
-    }
-
-    .relatorio-item-value {
-      font-weight: 600;
-      color: var(--color-primary);
-    }
-
-    .relatorio-item.escasso .relatorio-item-value {
-      color: var(--color-danger);
-    }
-
     .no-data {
       text-align: center;
       padding: 20px;
@@ -568,69 +598,41 @@
       font-size: 14px;
     }
 
-    .campo-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .config-section {
+      background: var(--color-bg-white);
+      padding: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--color-border);
+      margin-bottom: 20px;
+    }
+
+    .config-section h3 {
+      margin-bottom: 20px;
+      color: var(--color-text-dark);
+      font-size: 16px;
+    }
+
+    .config-item {
       padding: 12px;
       background: var(--color-bg-light);
       border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .campo-checkbox:hover {
-      background: #f3f4f6;
-    }
-
-    .campo-checkbox input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-    }
-
-    .campo-label {
-      flex: 1;
+    .config-label {
       font-size: 14px;
       color: var(--color-text-dark);
-      cursor: pointer;
-    }
-
-    .campo-obrigatorio {
-      font-size: 12px;
-      color: var(--color-danger);
-      margin-left: auto;
-    }
-
-    .categoria-tag {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: #dbeafe;
-      color: var(--color-primary);
-      border-radius: 6px;
-      font-size: 13px;
       font-weight: 500;
     }
 
-    .categoria-tag button {
-      background: none;
-      border: none;
-      color: var(--color-primary);
-      cursor: pointer;
-      font-size: 16px;
-      padding: 0;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .categoria-tag button:hover {
-      background: rgba(37, 99, 235, 0.2);
-      border-radius: 4px;
+    .config-value {
+      font-size: 12px;
+      color: var(--color-text-light);
+      font-family: monospace;
+      word-break: break-all;
     }
 
     @media (max-width: 768px) {
@@ -668,10 +670,6 @@
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       }
 
-      .modal-body {
-        flex-direction: column;
-      }
-
       .header {
         flex-direction: column;
         gap: 16px;
@@ -680,10 +678,7 @@
 
       .header-actions {
         width: 100%;
-      }
-
-      .header-actions button {
-        flex: 1;
+        flex-wrap: wrap;
       }
     }
   </style>
@@ -718,14 +713,26 @@
     <div class="header">
       <div class="header-title" id="pageTitle">Consultar Livros</div>
       <div class="header-actions">
+        <div class="sync-status" id="syncStatus">
+          <span id="syncIcon">⏳</span>
+          <span id="syncText">Carregando...</span>
+        </div>
+        <button onclick="sincronizar()">🔄 Sincronizar</button>
         <button onclick="exportarDados()">📥 Exportar</button>
-        <button onclick="atualizarPagina()">🔄 Atualizar</button>
       </div>
     </div>
 
     <div class="content-area">
       <!-- ABA CONSULTA -->
       <div id="tab-consulta" class="tab-content active">
+        <div id="alertaGoogle" class="alert info" style="display: none;">
+          <span>ℹ️</span>
+          <div>
+            <strong>Google Sheets não configurado</strong><br>
+            Os dados estão sendo salvos localmente. Configure na aba "Configuração" para usar a nuvem!
+          </div>
+        </div>
+
         <div class="stats">
           <div class="stat-card">
             <div class="stat-value" id="totalLivros">0</div>
@@ -782,16 +789,6 @@
               <label>Categoria *</label>
               <select id="formCategoria" required>
                 <option value="">Escolha uma categoria</option>
-                <option value="Animais">Animais</option>
-                <option value="Fantasia">Fantasia</option>
-                <option value="Aventura">Aventura</option>
-                <option value="Natureza">Natureza</option>
-                <option value="Mistério">Mistério</option>
-                <option value="Humor">Humor</option>
-                <option value="Educativo">Educativo</option>
-                <option value="Clássico">Clássico</option>
-                <option value="Amizade">Amizade</option>
-                <option value="Família">Família</option>
               </select>
             </div>
 
@@ -840,37 +837,58 @@
       <!-- ABA CONFIGURACAO -->
       <div id="tab-configuracao" class="tab-content">
         <div style="max-width: 800px;">
-          <div style="background: var(--color-bg-white); padding: 30px; border-radius: 8px; border: 1px solid var(--color-border); margin-bottom: 20px;">
-            <h2 style="margin-bottom: 20px; color: var(--color-text-dark); font-size: 18px;">Campos do Formulário</h2>
+          <div class="config-section">
+            <h3>🔗 Conexão Google Sheets</h3>
+            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">Configure a planilha Google Sheets para sincronizar dados na nuvem:</p>
             
-            <div style="margin-bottom: 30px;">
-              <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">Personalize quais campos aparecem ao adicionar livros:</p>
-              
-              <div id="camposConfig" style="display: grid; gap: 12px;">
-                <!-- Preenchido por JavaScript -->
-              </div>
+            <div class="form-group">
+              <label>ID da Planilha Google Sheets</label>
+              <input type="text" id="googleSheetsId" placeholder="Cole aqui a ID da sua planilha">
+              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
+                Encontre na URL: docs.google.com/spreadsheets/d/<strong>ID_AQUI</strong>/edit
+              </small>
             </div>
 
-            <div style="border-top: 1px solid var(--color-border); padding-top: 20px; display: flex; gap: 10px;">
+            <div class="form-group">
+              <label>Seu Email (Google)</label>
+              <input type="email" id="googleEmail" placeholder="seu.email@gmail.com">
+              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
+                Sua conta Google que tem acesso à planilha
+              </small>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+              <button class="primary" onclick="salvarConfigGoogle()" style="flex: 1;">✅ Salvar configuração</button>
+              <button onclick="testarConexaoGoogle()">🔍 Testar conexão</button>
+            </div>
+
+            <div id="configStatus" style="margin-top: 16px; padding: 12px; border-radius: 6px; display: none;">
+              <!-- Status da configuração -->
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3>📋 Campos do Formulário</h3>
+            <div id="camposConfig" style="display: grid; gap: 12px;">
+              <!-- Preenchido por JavaScript -->
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
               <button class="primary" onclick="salvarConfiguracao()" style="flex: 1;">✅ Salvar configuração</button>
               <button onclick="restaurarConfigPadrao()">↻ Restaurar padrão</button>
             </div>
           </div>
 
-          <div style="background: var(--color-bg-white); padding: 30px; border-radius: 8px; border: 1px solid var(--color-border);">
-            <h2 style="margin-bottom: 20px; color: var(--color-text-dark); font-size: 18px;">Categorias</h2>
+          <div class="config-section">
+            <h3>🏷️ Categorias</h3>
+            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">Adicione ou remova categorias:</p>
             
-            <div style="margin-bottom: 20px;">
-              <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">Adicione ou remova categorias:</p>
-              
-              <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px;">
-                <button class="primary" onclick="adicionarCategoria()">Adicionar</button>
-              </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+              <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px;">
+              <button class="primary" onclick="adicionarCategoria()">Adicionar</button>
+            </div>
 
-              <div id="listaCategorias" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <!-- Preenchido por JavaScript -->
-              </div>
+            <div id="listaCategorias" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <!-- Preenchido por JavaScript -->
             </div>
           </div>
         </div>
@@ -897,10 +915,13 @@
 </div>
 
 <script>
+const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/{ID}/export?format=csv';
+
 let livros = [];
 let livroSelecionado = null;
+let usandoGoogleSheets = false;
+let googleSheetsId = '';
 
-// Campos disponíveis no formulário
 const camposDisponiveis = [
   { id: 'titulo', label: 'Título do livro', obrigatorio: true },
   { id: 'autor', label: 'Autor', obrigatorio: true },
@@ -913,6 +934,212 @@ const camposDisponiveis = [
 
 let camposAtivos = camposDisponiveis.map(c => c.id);
 let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico', 'Amizade', 'Família'];
+
+function atualizarSyncStatus(status, mensagem) {
+  const syncStatus = document.getElementById('syncStatus');
+  const syncIcon = document.getElementById('syncIcon');
+  const syncText = document.getElementById('syncText');
+  
+  syncStatus.className = 'sync-status ' + status;
+  syncText.textContent = mensagem;
+  
+  if (status === 'sincronizado') {
+    syncIcon.textContent = '✅';
+  } else if (status === 'sincronizando') {
+    syncIcon.textContent = '⏳';
+  } else if (status === 'erro') {
+    syncIcon.textContent = '❌';
+  }
+}
+
+async function carregarDados() {
+  atualizarSyncStatus('sincronizando', 'Sincronizando...');
+  
+  const config = localStorage.getItem('configGoogle');
+  if (config) {
+    const parsed = JSON.parse(config);
+    googleSheetsId = parsed.id;
+    
+    if (googleSheetsId) {
+      try {
+        await carregarDoGoogleSheets();
+        usandoGoogleSheets = true;
+        atualizarSyncStatus('sincronizado', 'Sincronizado');
+        document.getElementById('alertaGoogle').style.display = 'none';
+      } catch (erro) {
+        console.log('Erro ao carregar Google Sheets, usando local:', erro);
+        carregarDoLocal();
+        atualizarSyncStatus('erro', 'Erro na sincronização');
+        document.getElementById('alertaGoogle').style.display = 'flex';
+      }
+    } else {
+      carregarDoLocal();
+      atualizarSyncStatus('erro', 'Não configurado');
+      document.getElementById('alertaGoogle').style.display = 'flex';
+    }
+  } else {
+    carregarDoLocal();
+    atualizarSyncStatus('erro', 'Não configurado');
+    document.getElementById('alertaGoogle').style.display = 'flex';
+  }
+  
+  carregarConfiguracao();
+  renderizar();
+  atualizarStats();
+  atualizarFiltros();
+}
+
+function carregarDoLocal() {
+  const dados = localStorage.getItem('cataloLivros');
+  if (dados) {
+    livros = JSON.parse(dados);
+  }
+}
+
+async function carregarDoGoogleSheets() {
+  const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv`;
+  
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Erro ao baixar planilha');
+  }
+  
+  const csv = await response.text();
+  const parsed = Papa.parse(csv, { header: true });
+  
+  livros = parsed.data
+    .filter(row => row.id && row.titulo)
+    .map(row => ({
+      id: parseInt(row.id) || Date.now(),
+      titulo: row.titulo || '',
+      autor: row.autor || '',
+      editora: row.editora || '',
+      categoria: row.categoria || '',
+      exemplares: parseInt(row.exemplares) || 0,
+      resumo: row.resumo || '',
+      foto: row.foto || '',
+      dataCriacao: row.dataCriacao || new Date().toLocaleDateString('pt-BR')
+    }));
+}
+
+function salvarDoLocal() {
+  localStorage.setItem('cataloLivros', JSON.stringify(livros));
+}
+
+async function sincronizar() {
+  if (!googleSheetsId) {
+    alert('Google Sheets não configurado! Vá em Configuração para configurar.');
+    return;
+  }
+  
+  atualizarSyncStatus('sincronizando', 'Sincronizando...');
+  try {
+    await carregarDoGoogleSheets();
+    renderizar();
+    atualizarStats();
+    atualizarFiltros();
+    atualizarSyncStatus('sincronizado', 'Sincronizado');
+    alert('✅ Dados sincronizados com sucesso!');
+  } catch (erro) {
+    atualizarSyncStatus('erro', 'Erro na sincronização');
+    alert('❌ Erro ao sincronizar: ' + erro.message);
+  }
+}
+
+function salvarConfigGoogle() {
+  const id = document.getElementById('googleSheetsId').value.trim();
+  
+  if (!id) {
+    alert('Digite a ID da planilha Google Sheets');
+    return;
+  }
+  
+  const config = {
+    id: id,
+    email: document.getElementById('googleEmail').value
+  };
+  
+  localStorage.setItem('configGoogle', JSON.stringify(config));
+  googleSheetsId = id;
+  
+  alert('✅ Configuração salva! Sincronizando...');
+  sincronizar();
+}
+
+async function testarConexaoGoogle() {
+  const id = document.getElementById('googleSheetsId').value.trim();
+  
+  if (!id) {
+    alert('Digite a ID da planilha Google Sheets');
+    return;
+  }
+  
+  const configStatus = document.getElementById('configStatus');
+  configStatus.style.display = 'block';
+  configStatus.innerHTML = '<strong>⏳ Testando conexão...</strong>';
+  
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
+    const response = await fetch(url);
+    
+    if (response.ok) {
+      configStatus.innerHTML = '<strong style="color: var(--color-success);">✅ Conexão OK!</strong><br>A planilha foi encontrada e está acessível.';
+      configStatus.style.background = '#dcfce7';
+      configStatus.style.borderLeft = '4px solid var(--color-success)';
+    } else {
+      throw new Error('Planilha não encontrada');
+    }
+  } catch (erro) {
+    configStatus.innerHTML = `<strong style="color: var(--color-danger);">❌ Erro!</strong><br>${erro.message}<br><br>Verifique:<br>1. A ID está correta?<br>2. A planilha está compartilhada como "Link"?<br>3. As colunas são: id, titulo, autor, editora, categoria, exemplares, resumo, foto?`;
+    configStatus.style.background = '#fee2e2';
+    configStatus.style.borderLeft = '4px solid var(--color-danger)';
+  }
+}
+
+function adicionarLivro(e) {
+  e.preventDefault();
+  
+  const novoLivro = {
+    id: Date.now(),
+    titulo: document.getElementById('formTitulo').value,
+    autor: document.getElementById('formAutor').value,
+    editora: document.getElementById('formEditora').value,
+    categoria: document.getElementById('formCategoria').value,
+    exemplares: parseInt(document.getElementById('formExemplares').value),
+    resumo: document.getElementById('formResumo').value,
+    foto: document.getElementById('formFoto').value,
+    dataCriacao: new Date().toLocaleDateString('pt-BR')
+  };
+
+  livros.push(novoLivro);
+  salvarDoLocal();
+  
+  document.getElementById('formAdicionar').reset();
+  switchTab('consulta');
+  renderizar();
+  atualizarStats();
+  atualizarFiltros();
+  alert('✅ Livro adicionado com sucesso!');
+}
+
+function filtrarLivros() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const activeTags = Array.from(document.querySelectorAll('.tag.active')).map(t => t.textContent.trim());
+  
+  const filtrados = livros.filter(livro => {
+    const matchSearch = 
+      livro.titulo.toLowerCase().includes(search) ||
+      livro.autor.toLowerCase().includes(search) ||
+      livro.resumo.toLowerCase().includes(search);
+    
+    const matchTag = activeTags.length === 0 || activeTags.includes(livro.categoria);
+    
+    return matchSearch && matchTag;
+  });
+
+  renderizar(filtrados);
+  document.getElementById('emptyState').style.display = filtrados.length === 0 ? 'block' : 'none';
+}
 
 function carregarConfiguracao() {
   const config = localStorage.getItem('configCatalogo');
@@ -948,23 +1175,23 @@ function restaurarConfigPadrao() {
 function renderizarConfiguracao() {
   const container = document.getElementById('camposConfig');
   container.innerHTML = camposDisponiveis.map(campo => `
-    <div class="campo-checkbox">
+    <div style="padding: 12px; background: var(--color-bg-light); border-radius: 6px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
       <input 
         type="checkbox" 
         id="checkbox-${campo.id}" 
         ${camposAtivos.includes(campo.id) ? 'checked' : ''}
         onchange="atualizarCamposAtivos()"
       >
-      <label for="checkbox-${campo.id}" class="campo-label">${campo.label}</label>
-      ${campo.obrigatorio ? '<span class="campo-obrigatorio">*Obrigatório</span>' : ''}
+      <label for="checkbox-${campo.id}" style="flex: 1; font-size: 14px; color: var(--color-text-dark); cursor: pointer; margin: 0;">${campo.label}</label>
+      ${campo.obrigatorio ? '<span style="font-size: 12px; color: var(--color-danger);">*Obrigatório</span>' : ''}
     </div>
   `).join('');
 
   const listaCategorias = document.getElementById('listaCategorias');
   listaCategorias.innerHTML = categoriasList.map((cat, idx) => `
-    <div class="categoria-tag">
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #dbeafe; color: var(--color-primary); border-radius: 6px; font-size: 13px; font-weight: 500;">
       ${cat}
-      <button onclick="removerCategoria(${idx})" title="Remover">×</button>
+      <button type="button" onclick="removerCategoria(${idx})" style="background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 16px; padding: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">×</button>
     </div>
   `).join('');
 }
@@ -1005,12 +1232,10 @@ function atualizarFormulario() {
   const formulario = document.getElementById('formAdicionar');
   const selectCategoria = document.getElementById('formCategoria');
   
-  // Atualizar seletor de categoria
   const optionsHtml = '<option value="">Escolha uma categoria</option>' + 
     categoriasList.map(cat => `<option value="${cat}">${cat}</option>`).join('');
   selectCategoria.innerHTML = optionsHtml;
   
-  // Mostrar/esconder campos conforme necessário
   const mapeoPorId = {
     'titulo': 'formTitulo',
     'autor': 'formAutor',
@@ -1028,65 +1253,6 @@ function atualizarFormulario() {
       pai.style.display = camposAtivos.includes(campoId) ? 'block' : 'none';
     }
   });
-}
-
-function carregarDados() {
-  const dados = localStorage.getItem('cataloLivros');
-  if (dados) {
-    livros = JSON.parse(dados);
-  }
-  carregarConfiguracao();
-  renderizar();
-  atualizarStats();
-  atualizarFiltros();
-}
-
-function salvarDados() {
-  localStorage.setItem('cataloLivros', JSON.stringify(livros));
-}
-
-function adicionarLivro(e) {
-  e.preventDefault();
-  
-  const novoLivro = {
-    id: Date.now(),
-    titulo: document.getElementById('formTitulo').value,
-    autor: document.getElementById('formAutor').value,
-    editora: document.getElementById('formEditora').value,
-    categoria: document.getElementById('formCategoria').value,
-    exemplares: parseInt(document.getElementById('formExemplares').value),
-    resumo: document.getElementById('formResumo').value,
-    foto: document.getElementById('formFoto').value,
-    dataCriacao: new Date().toLocaleDateString('pt-BR')
-  };
-
-  livros.push(novoLivro);
-  salvarDados();
-  document.getElementById('formAdicionar').reset();
-  switchTab('consulta');
-  renderizar();
-  atualizarStats();
-  atualizarFiltros();
-  alert('✅ Livro adicionado com sucesso!');
-}
-
-function filtrarLivros() {
-  const search = document.getElementById('searchInput').value.toLowerCase();
-  const activeTags = Array.from(document.querySelectorAll('.tag.active')).map(t => t.textContent.trim());
-  
-  const filtrados = livros.filter(livro => {
-    const matchSearch = 
-      livro.titulo.toLowerCase().includes(search) ||
-      livro.autor.toLowerCase().includes(search) ||
-      livro.resumo.toLowerCase().includes(search);
-    
-    const matchTag = activeTags.length === 0 || activeTags.includes(livro.categoria);
-    
-    return matchSearch && matchTag;
-  });
-
-  renderizar(filtrados);
-  document.getElementById('emptyState').style.display = filtrados.length === 0 ? 'block' : 'none';
 }
 
 function atualizarFiltros() {
@@ -1191,12 +1357,11 @@ function deletarLivro() {
   if (!livroSelecionado) return;
   if (confirm(`Tem certeza que deseja deletar "${livroSelecionado.titulo}"?`)) {
     livros = livros.filter(l => l.id !== livroSelecionado.id);
-    salvarDados();
+    salvarDoLocal();
     fecharModal();
     renderizar();
     atualizarStats();
     atualizarFiltros();
-    alert('✅ Livro deletado!');
   }
 }
 
@@ -1211,7 +1376,7 @@ function editarLivro() {
   document.getElementById('formFoto').value = livroSelecionado.foto;
   
   livros = livros.filter(l => l.id !== livroSelecionado.id);
-  salvarDados();
+  salvarDoLocal();
   fecharModal();
   switchTab('adicionar');
 }
@@ -1233,6 +1398,12 @@ function switchTab(tabName) {
   
   if (tabName === 'configuracao') {
     renderizarConfiguracao();
+    const config = localStorage.getItem('configGoogle');
+    if (config) {
+      const parsed = JSON.parse(config);
+      document.getElementById('googleSheetsId').value = parsed.id || '';
+      document.getElementById('googleEmail').value = parsed.email || '';
+    }
   }
 }
 
@@ -1248,9 +1419,9 @@ function gerarRelatorios() {
     html = '<div class="no-data">Nenhum livro cadastrado ainda</div>';
   } else {
     Object.entries(porCategoria).sort((a, b) => b[1] - a[1]).forEach(([cat, count]) => {
-      html += `<div class="relatorio-item">
+      html += `<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--color-border);">
         <span>${cat}</span>
-        <span class="relatorio-item-value">${count} livro${count !== 1 ? 's' : ''}</span>
+        <span style="font-weight: 500;">${count} livro${count !== 1 ? 's' : ''}</span>
       </div>`;
     });
   }
@@ -1262,9 +1433,9 @@ function gerarRelatorios() {
     htmlEscassos = '<div class="no-data">Nenhum livro com poucas cópias</div>';
   } else {
     escassos.forEach(l => {
-      htmlEscassos += `<div class="relatorio-item escasso">
+      htmlEscassos += `<div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--color-border);">
         <span>${l.titulo}</span>
-        <span class="relatorio-item-value">${l.exemplares}</span>
+        <span style="color: var(--color-danger); font-weight: 500;">${l.exemplares}</span>
       </div>`;
     });
   }
@@ -1272,8 +1443,8 @@ function gerarRelatorios() {
 }
 
 function exportarDados() {
-  const csv = 'Título,Autor,Editora,Categoria,Exemplares,Resumo\n' + 
-    livros.map(l => `"${l.titulo.replace(/"/g, '""')}","${l.autor.replace(/"/g, '""')}","${l.editora.replace(/"/g, '""')}","${l.categoria}",${l.exemplares},"${l.resumo.replace(/"/g, '""')}"`).join('\n');
+  const csv = 'ID,Título,Autor,Editora,Categoria,Exemplares,Resumo,Foto\n' + 
+    livros.map(l => `${l.id},"${l.titulo.replace(/"/g, '""')}","${l.autor.replace(/"/g, '""')}","${l.editora.replace(/"/g, '""')}","${l.categoria}",${l.exemplares},"${l.resumo.replace(/"/g, '""')}","${l.foto}"`).join('\n');
   
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -1282,12 +1453,6 @@ function exportarDados() {
   a.download = 'catalogo_livros.csv';
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function atualizarPagina() {
-  renderizar();
-  atualizarStats();
-  alert('✅ Atualizado!');
 }
 
 carregarDados();
