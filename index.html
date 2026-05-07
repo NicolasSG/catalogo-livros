@@ -967,14 +967,19 @@ async function carregarDadosPlanilha() {
   
   try {
     const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv`;
+    console.log('Carregando planilha de:', url);
+    
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error('Erro ao carregar');
+      throw new Error('Erro ao carregar: ' + response.status);
     }
     
     const csv = await response.text();
+    console.log('CSV recebido, linhas:', csv.split('\n').length);
+    
     const parsed = Papa.parse(csv, { header: true });
+    console.log('Linhas parseadas:', parsed.data.length);
     
     livros = parsed.data
       .filter(row => row.id && row.titulo)
@@ -989,13 +994,15 @@ async function carregarDadosPlanilha() {
         foto: row.foto || ''
       }));
 
+    console.log('Livros carregados:', livros.length);
+
     document.getElementById('alertaGoogle').style.display = 'flex';
     atualizarSyncStatus('sincronizado', 'Sincronizado');
     renderizar();
     atualizarStats();
     atualizarFiltros();
   } catch (erro) {
-    console.error('Erro:', erro);
+    console.error('Erro ao carregar:', erro);
     atualizarSyncStatus('erro', 'Erro ao carregar');
   }
 }
@@ -1007,7 +1014,12 @@ async function sincronizar() {
     return;
   }
   
+  console.log('Sincronizando...');
+  atualizarSyncStatus('sincronizando', 'Sincronizando...');
+  
   await carregarDadosPlanilha();
+  
+  console.log('Sincronização concluída!');
 }
 
 // ============================================
