@@ -857,6 +857,14 @@
               </small>
             </div>
 
+            <div class="form-group">
+              <label>URL do Apps Script</label>
+              <input type="url" id="appsScriptUrl" placeholder="https://script.google.com/macros/d/...">
+              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
+                Cole aqui a URL do Apps Script que você criou (para salvar na planilha)
+              </small>
+            </div>
+
             <div style="display: flex; gap: 10px;">
               <button class="primary" onclick="salvarConfigGoogle()" style="flex: 1;">✅ Salvar configuração</button>
               <button onclick="testarConexaoGoogle()">🔍 Testar conexão</button>
@@ -915,12 +923,14 @@
 </div>
 
 <script>
-const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/1ZfLN5R_gwIeyVcpy6O5Fkg8vzrqryZjb2jiJxjd7AgM/export?format=csv';
+const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/{ID}/export?format=csv';
+const APPS_SCRIPT_URL = ''; // Será preenchido na configuração
 
 let livros = [];
 let livroSelecionado = null;
 let usandoGoogleSheets = false;
 let googleSheetsId = '';
+let appsScriptUrl = '';
 
 const camposDisponiveis = [
   { id: 'titulo', label: 'Título do livro', obrigatorio: true },
@@ -934,6 +944,27 @@ const camposDisponiveis = [
 
 let camposAtivos = camposDisponiveis.map(c => c.id);
 let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico', 'Amizade', 'Família'];
+
+async function enviarParaAppsScript(acao, dados) {
+  if (!appsScriptUrl) {
+    console.log('Apps Script não configurado, salvando localmente apenas');
+    return true;
+  }
+  
+  try {
+    const response = await fetch(appsScriptUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: acao, ...dados })
+    });
+    
+    const resultado = await response.text();
+    const parsed = JSON.parse(resultado);
+    return parsed.success;
+  } catch (erro) {
+    console.log('Erro ao enviar para Apps Script:', erro);
+    return false;
+  }
+}
 
 function atualizarSyncStatus(status, mensagem) {
   const syncStatus = document.getElementById('syncStatus');
@@ -959,6 +990,7 @@ async function carregarDados() {
   if (config) {
     const parsed = JSON.parse(config);
     googleSheetsId = parsed.id;
+    appsScriptUrl = parsed.appsScriptUrl;
     
     if (googleSheetsId) {
       try {
@@ -1048,19 +1080,27 @@ async function sincronizar() {
 
 function salvarConfigGoogle() {
   const id = document.getElementById('googleSheetsId').value.trim();
+  const url = document.getElementById('appsScriptUrl').value.trim();
   
   if (!id) {
     alert('Digite a ID da planilha Google Sheets');
     return;
   }
   
+  if (!url) {
+    alert('Digite a URL do Apps Script');
+    return;
+  }
+  
   const config = {
     id: id,
-    email: document.getElementById('googleEmail').value
+    email: document.getElementById('googleEmail').value,
+    appsScriptUrl: url
   };
   
   localStorage.setItem('configGoogle', JSON.stringify(config));
   googleSheetsId = id;
+  appsScriptUrl = url;
   
   alert('✅ Configuração salva! Sincronizando...');
   sincronizar();
@@ -1113,6 +1153,11 @@ function adicionarLivro(e) {
 
   livros.push(novoLivro);
   salvarDoLocal();
+  
+  // Enviar para Apps Script se configurado
+  if (appsScriptUrl) {
+    enviarParaAppsScript('addBook', novoLivro);
+  }
   
   document.getElementById('formAdicionar').reset();
   switchTab('consulta');
@@ -1356,8 +1401,16 @@ function fecharModal(event) {
 function deletarLivro() {
   if (!livroSelecionado) return;
   if (confirm(`Tem certeza que deseja deletar "${livroSelecionado.titulo}"?`)) {
-    livros = livros.filter(l => l.id !== livroSelecionado.id);
+    const idLivro = livroSelecionado.id;
+    
+    livros = livros.filter(l => l.id !== idLivro);
     salvarDoLocal();
+    
+    // Enviar para Apps Script se configurado
+    if (appsScriptUrl) {
+      enviarParaAppsScript('deleteBook', { id: idLivro });
+    }
+    
     fecharModal();
     renderizar();
     atualizarStats();
@@ -1375,8 +1428,15 @@ function editarLivro() {
   document.getElementById('formResumo').value = livroSelecionado.resumo;
   document.getElementById('formFoto').value = livroSelecionado.foto;
   
-  livros = livros.filter(l => l.id !== livroSelecionado.id);
+  const idAntiga = livroSelecionado.id;
+  livros = livros.filter(l => l.id !== idAntiga);
   salvarDoLocal();
+  
+  // Enviar deleção para Apps Script se configurado
+  if (appsScriptUrl) {
+    enviarParaAppsScript('deleteBook', { id: idAntiga });
+  }
+  
   fecharModal();
   switchTab('adicionar');
 }
@@ -1403,6 +1463,7 @@ function switchTab(tabName) {
       const parsed = JSON.parse(config);
       document.getElementById('googleSheetsId').value = parsed.id || '';
       document.getElementById('googleEmail').value = parsed.email || '';
+      document.getElementById('appsScriptUrl').value = parsed.appsScriptUrl || '';
     }
   }
 }
