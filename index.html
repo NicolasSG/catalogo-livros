@@ -4,7 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Catálogo de Livros - Biblioteca</title>
+  
+  <!-- Google APIs -->
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  
   <style>
     * {
       margin: 0;
@@ -15,7 +20,6 @@
     :root {
       --color-primary: #2563eb;
       --color-primary-light: #3b82f6;
-      --color-bg-dark: #1f2937;
       --color-bg-light: #f9fafb;
       --color-bg-white: #ffffff;
       --color-text-dark: #111827;
@@ -28,7 +32,7 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
       background: var(--color-bg-light);
       color: var(--color-text-dark);
       line-height: 1.6;
@@ -127,6 +131,28 @@
       align-items: center;
     }
 
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--color-bg-light);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+
     .sync-status {
       font-size: 12px;
       padding: 6px 12px;
@@ -165,6 +191,16 @@
 
     .header-actions button:hover {
       background: var(--color-bg-light);
+    }
+
+    .header-actions button.primary {
+      background: var(--color-primary);
+      color: white;
+      border-color: var(--color-primary);
+    }
+
+    .header-actions button.primary:hover {
+      background: var(--color-primary-light);
     }
 
     .content-area {
@@ -249,10 +285,6 @@
       font-size: 14px;
       background: var(--color-bg-white);
       color: var(--color-text-dark);
-    }
-
-    .search-bar input::placeholder {
-      color: var(--color-text-lighter);
     }
 
     .search-bar input:focus {
@@ -598,41 +630,38 @@
       font-size: 14px;
     }
 
-    .config-section {
-      background: var(--color-bg-white);
-      padding: 30px;
-      border-radius: 8px;
-      border: 1px solid var(--color-border);
-      margin-bottom: 20px;
-    }
-
-    .config-section h3 {
-      margin-bottom: 20px;
-      color: var(--color-text-dark);
-      font-size: 16px;
-    }
-
-    .config-item {
-      padding: 12px;
-      background: var(--color-bg-light);
-      border-radius: 6px;
-      margin-bottom: 10px;
+    .login-container {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      height: 100vh;
+      gap: 20px;
     }
 
-    .config-label {
-      font-size: 14px;
+    .login-box {
+      background: var(--color-bg-white);
+      padding: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--color-border);
+      text-align: center;
+    }
+
+    .login-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 16px;
       color: var(--color-text-dark);
-      font-weight: 500;
     }
 
-    .config-value {
-      font-size: 12px;
+    .login-subtitle {
+      font-size: 14px;
       color: var(--color-text-light);
-      font-family: monospace;
-      word-break: break-all;
+      margin-bottom: 32px;
+    }
+
+    #google-signin-button {
+      margin: 0 auto;
     }
 
     @media (max-width: 768px) {
@@ -685,7 +714,17 @@
 </head>
 <body>
 
-<div class="app-container">
+<!-- TELA DE LOGIN -->
+<div id="loginScreen" class="login-container" style="display: flex;">
+  <div class="login-box">
+    <div class="login-title">📚 Catálogo de Livros</div>
+    <div class="login-subtitle">Conecte com sua conta Google para começar</div>
+    <div id="google-signin-button"></div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="appScreen" class="app-container" style="display: none;">
   <div class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-text">📚 Biblioteca</div>
@@ -703,10 +742,6 @@
       <span>📊</span>
       <span>Relatórios</span>
     </button>
-    <button class="nav-item" onclick="switchTab('configuracao')">
-      <span>⚙️</span>
-      <span>Configuração</span>
-    </button>
   </div>
 
   <div class="main-content">
@@ -719,17 +754,24 @@
         </div>
         <button onclick="sincronizar()">🔄 Sincronizar</button>
         <button onclick="exportarDados()">📥 Exportar</button>
+        <div class="user-info" id="userInfo" style="display: none;">
+          <div class="user-avatar" id="userAvatar">U</div>
+          <div>
+            <div id="userName" style="font-weight: 500; margin-bottom: 2px;">User</div>
+            <button onclick="fazerLogout()" style="padding: 4px 8px; font-size: 11px;">Sair</button>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="content-area">
       <!-- ABA CONSULTA -->
       <div id="tab-consulta" class="tab-content active">
-        <div id="alertaGoogle" class="alert info" style="display: none;">
+        <div id="alertaGoogle" class="alert info">
           <span>ℹ️</span>
           <div>
-            <strong>Google Sheets não configurado</strong><br>
-            Os dados estão sendo salvos localmente. Configure na aba "Configuração" para usar a nuvem!
+            <strong>Conectado ao Google Sheets</strong><br>
+            Os dados estão sincronizados com sua planilha. Qualquer alteração é salva automaticamente!
           </div>
         </div>
 
@@ -789,6 +831,16 @@
               <label>Categoria *</label>
               <select id="formCategoria" required>
                 <option value="">Escolha uma categoria</option>
+                <option value="Animais">Animais</option>
+                <option value="Fantasia">Fantasia</option>
+                <option value="Aventura">Aventura</option>
+                <option value="Natureza">Natureza</option>
+                <option value="Mistério">Mistério</option>
+                <option value="Humor">Humor</option>
+                <option value="Educativo">Educativo</option>
+                <option value="Clássico">Clássico</option>
+                <option value="Amizade">Amizade</option>
+                <option value="Família">Família</option>
               </select>
             </div>
 
@@ -833,74 +885,6 @@
           </div>
         </div>
       </div>
-
-      <!-- ABA CONFIGURACAO -->
-      <div id="tab-configuracao" class="tab-content">
-        <div style="max-width: 800px;">
-          <div class="config-section">
-            <h3>🔗 Conexão Google Sheets</h3>
-            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">Configure a planilha Google Sheets para sincronizar dados na nuvem:</p>
-            
-            <div class="form-group">
-              <label>ID da Planilha Google Sheets</label>
-              <input type="text" id="googleSheetsId" placeholder="Cole aqui a ID da sua planilha">
-              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
-                Encontre na URL: docs.google.com/spreadsheets/d/<strong>ID_AQUI</strong>/edit
-              </small>
-            </div>
-
-            <div class="form-group">
-              <label>Seu Email (Google)</label>
-              <input type="email" id="googleEmail" placeholder="seu.email@gmail.com">
-              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
-                Sua conta Google que tem acesso à planilha
-              </small>
-            </div>
-
-            <div class="form-group">
-              <label>URL do Apps Script</label>
-              <input type="url" id="appsScriptUrl" placeholder="https://script.google.com/macros/d/...">
-              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
-                Cole aqui a URL do Apps Script que você criou (para salvar na planilha)
-              </small>
-            </div>
-
-            <div style="display: flex; gap: 10px;">
-              <button class="primary" onclick="salvarConfigGoogle()" style="flex: 1;">✅ Salvar configuração</button>
-              <button onclick="testarConexaoGoogle()">🔍 Testar conexão</button>
-            </div>
-
-            <div id="configStatus" style="margin-top: 16px; padding: 12px; border-radius: 6px; display: none;">
-              <!-- Status da configuração -->
-            </div>
-          </div>
-
-          <div class="config-section">
-            <h3>📋 Campos do Formulário</h3>
-            <div id="camposConfig" style="display: grid; gap: 12px;">
-              <!-- Preenchido por JavaScript -->
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-              <button class="primary" onclick="salvarConfiguracao()" style="flex: 1;">✅ Salvar configuração</button>
-              <button onclick="restaurarConfigPadrao()">↻ Restaurar padrão</button>
-            </div>
-          </div>
-
-          <div class="config-section">
-            <h3>🏷️ Categorias</h3>
-            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">Adicione ou remova categorias:</p>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-              <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px;">
-              <button class="primary" onclick="adicionarCategoria()">Adicionar</button>
-            </div>
-
-            <div id="listaCategorias" style="display: flex; flex-wrap: wrap; gap: 8px;">
-              <!-- Preenchido por JavaScript -->
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -923,49 +907,115 @@
 </div>
 
 <script>
-const GOOGLE_SHEETS_URL = 'https://docs.google.com/spreadsheets/d/{ID}/export?format=csv';
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzfY25cXRyqF8dsppJLYjXTV3CJ72rtTd0J7KgjY2ry/dev'; // Será preenchido na configuração
+// ============================================
+// CONFIGURAÇÃO GOOGLE SHEETS API
+// ============================================
+// PREENCHA ESSES DADOS:
+const GOOGLE_CLIENT_ID = '621833041327-p3pb3i69nf72ugrio9khcpl6e8ak5kr5.apps.googleusercontent.com';
+const GOOGLE_SHEETS_ID = '1ZfLN5R_gwIeyVcpy6O5Fkg8vzrqryZjb2jiJxjd7AgM';
 
+// ============================================
+// VARIÁVEIS GLOBAIS
+// ============================================
 let livros = [];
 let livroSelecionado = null;
-let usandoGoogleSheets = false;
-let googleSheetsId = '';
-let appsScriptUrl = '';
+let gapiInitialized = false;
+let usuarioAutenticado = false;
 
-const camposDisponiveis = [
-  { id: 'titulo', label: 'Título do livro', obrigatorio: true },
-  { id: 'autor', label: 'Autor', obrigatorio: true },
-  { id: 'editora', label: 'Editora', obrigatorio: false },
-  { id: 'categoria', label: 'Categoria', obrigatorio: true },
-  { id: 'exemplares', label: 'Exemplares disponíveis', obrigatorio: true },
-  { id: 'resumo', label: 'Resumo', obrigatorio: false },
-  { id: 'foto', label: 'URL da capa', obrigatorio: false }
-];
+// ============================================
+// INICIALIZAR GOOGLE API
+// ============================================
+window.onload = function() {
+  carregarAPIGoogle();
+};
 
-let camposAtivos = camposDisponiveis.map(c => c.id);
-let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico', 'Amizade', 'Família'];
+function carregarAPIGoogle() {
+  gapi.load('client:auth2', inicializarGoogle);
+}
 
-async function enviarParaAppsScript(acao, dados) {
-  if (!appsScriptUrl) {
-    console.log('Apps Script não configurado, salvando localmente apenas');
-    return true;
-  }
-  
-  try {
-    const response = await fetch(appsScriptUrl, {
-      method: 'POST',
-      body: JSON.stringify({ action: acao, ...dados })
-    });
-    
-    const resultado = await response.text();
-    const parsed = JSON.parse(resultado);
-    return parsed.success;
-  } catch (erro) {
-    console.log('Erro ao enviar para Apps Script:', erro);
-    return false;
+function inicializarGoogle() {
+  gapi.client.init({
+    clientId: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+  }).then(() => {
+    gapiInitialized = true;
+    verificarAutenticacao();
+  }).catch(erro => {
+    console.error('Erro ao inicializar Google:', erro);
+  });
+}
+
+function verificarAutenticacao() {
+  const auth = gapi.auth2.getAuthInstance();
+  if (auth && auth.isSignedIn.get()) {
+    usuarioAutenticado = true;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appScreen').style.display = 'flex';
+    mostrarInfoUsuario();
+    carregarDados();
+  } else {
+    mostrarLoginGoogle();
   }
 }
 
+function mostrarLoginGoogle() {
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: fazerLoginCallback
+  });
+  
+  google.accounts.id.renderButton(
+    document.getElementById('google-signin-button'),
+    { theme: 'outline', size: 'large' }
+  );
+}
+
+function fazerLoginCallback(response) {
+  usuarioAutenticado = true;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'flex';
+  
+  // Decodificar JWT para pegar informações do usuário
+  const base64Url = response.credential.split('.')[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+  
+  const userInfo = JSON.parse(jsonPayload);
+  localStorage.setItem('userName', userInfo.name);
+  localStorage.setItem('userEmail', userInfo.email);
+  
+  mostrarInfoUsuario();
+  carregarDados();
+}
+
+function mostrarInfoUsuario() {
+  const userName = localStorage.getItem('userName') || 'User';
+  const userEmail = localStorage.getItem('userEmail') || '';
+  
+  document.getElementById('userInfo').style.display = 'flex';
+  document.getElementById('userName').textContent = userName;
+  document.getElementById('userAvatar').textContent = userName.charAt(0).toUpperCase();
+}
+
+function fazerLogout() {
+  const auth = gapi.auth2.getAuthInstance();
+  auth.signOut().then(() => {
+    usuarioAutenticado = false;
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appScreen').style.display = 'none';
+    livros = [];
+    verificarAutenticacao();
+  });
+}
+
+// ============================================
+// FUNÇÕES DA GOOGLE SHEETS API
+// ============================================
 function atualizarSyncStatus(status, mensagem) {
   const syncStatus = document.getElementById('syncStatus');
   const syncIcon = document.getElementById('syncIcon');
@@ -984,93 +1034,128 @@ function atualizarSyncStatus(status, mensagem) {
 }
 
 async function carregarDados() {
-  atualizarSyncStatus('sincronizando', 'Sincronizando...');
+  atualizarSyncStatus('sincronizando', 'Carregando dados...');
   
-  const config = localStorage.getItem('configGoogle');
-  if (config) {
-    const parsed = JSON.parse(config);
-    googleSheetsId = parsed.id;
-    appsScriptUrl = parsed.appsScriptUrl;
-    
-    if (googleSheetsId) {
-      try {
-        await carregarDoGoogleSheets();
-        usandoGoogleSheets = true;
-        atualizarSyncStatus('sincronizado', 'Sincronizado');
-        document.getElementById('alertaGoogle').style.display = 'none';
-      } catch (erro) {
-        console.log('Erro ao carregar Google Sheets, usando local:', erro);
-        carregarDoLocal();
-        atualizarSyncStatus('erro', 'Erro na sincronização');
-        document.getElementById('alertaGoogle').style.display = 'flex';
+  try {
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEETS_ID,
+      range: 'Sheet1!A:H'
+    });
+
+    const values = response.result.values || [];
+    livros = [];
+
+    if (values && values.length > 1) {
+      for (let i = 1; i < values.length; i++) {
+        const row = values[i];
+        if (row[0] && row[1]) { // ID e título são obrigatórios
+          livros.push({
+            id: parseInt(row[0]) || Date.now(),
+            titulo: row[1] || '',
+            autor: row[2] || '',
+            editora: row[3] || '',
+            categoria: row[4] || '',
+            exemplares: parseInt(row[5]) || 0,
+            resumo: row[6] || '',
+            foto: row[7] || ''
+          });
+        }
       }
-    } else {
-      carregarDoLocal();
-      atualizarSyncStatus('erro', 'Não configurado');
-      document.getElementById('alertaGoogle').style.display = 'flex';
     }
-  } else {
-    carregarDoLocal();
-    atualizarSyncStatus('erro', 'Não configurado');
-    document.getElementById('alertaGoogle').style.display = 'flex';
-  }
-  
-  carregarConfiguracao();
-  renderizar();
-  atualizarStats();
-  atualizarFiltros();
-}
 
-function carregarDoLocal() {
-  const dados = localStorage.getItem('cataloLivros');
-  if (dados) {
-    livros = JSON.parse(dados);
+    atualizarSyncStatus('sincronizado', 'Sincronizado');
+    renderizar();
+    atualizarStats();
+    atualizarFiltros();
+  } catch (erro) {
+    console.error('Erro ao carregar:', erro);
+    atualizarSyncStatus('erro', 'Erro ao carregar');
   }
 }
 
-async function carregarDoGoogleSheets() {
-  const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv`;
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error('Erro ao baixar planilha');
+async function adicionarLivroNaPlanilha(novoLivro) {
+  try {
+    const values = [[
+      novoLivro.id,
+      novoLivro.titulo,
+      novoLivro.autor,
+      novoLivro.editora,
+      novoLivro.categoria,
+      novoLivro.exemplares,
+      novoLivro.resumo,
+      novoLivro.foto
+    ]];
+
+    await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId: GOOGLE_SHEETS_ID,
+      range: 'Sheet1!A:H',
+      valueInputOption: 'USER_ENTERED',
+      resource: { values }
+    });
+
+    return true;
+  } catch (erro) {
+    console.error('Erro ao adicionar livro:', erro);
+    return false;
   }
-  
-  const csv = await response.text();
-  const parsed = Papa.parse(csv, { header: true });
-  
-  livros = parsed.data
-    .filter(row => row.id && row.titulo)
-    .map(row => ({
-      id: parseInt(row.id) || Date.now(),
-      titulo: row.titulo || '',
-      autor: row.autor || '',
-      editora: row.editora || '',
-      categoria: row.categoria || '',
-      exemplares: parseInt(row.exemplares) || 0,
-      resumo: row.resumo || '',
-      foto: row.foto || '',
-      dataCriacao: row.dataCriacao || new Date().toLocaleDateString('pt-BR')
-    }));
 }
 
-function salvarDoLocal() {
-  localStorage.setItem('cataloLivros', JSON.stringify(livros));
+async function deletarLivroDaPlanilha(livroId) {
+  try {
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: GOOGLE_SHEETS_ID,
+      range: 'Sheet1!A:A'
+    });
+
+    const values = response.result.values || [];
+    let linhaParaDeletar = -1;
+
+    for (let i = 1; i < values.length; i++) {
+      if (parseInt(values[i][0]) === livroId) {
+        linhaParaDeletar = i;
+        break;
+      }
+    }
+
+    if (linhaParaDeletar === -1) {
+      throw new Error('Livro não encontrado');
+    }
+
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: GOOGLE_SHEETS_ID,
+      resource: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId: 0,
+              dimension: 'ROWS',
+              startIndex: linhaParaDeletar,
+              endIndex: linhaParaDeletar + 1
+            }
+          }
+        }]
+      }
+    });
+
+    return true;
+  } catch (erro) {
+    console.error('Erro ao deletar:', erro);
+    return false;
+  }
 }
 
+// ============================================
+// FUNÇÕES DO APP
+// ============================================
 async function sincronizar() {
-  if (!googleSheetsId) {
-    alert('Google Sheets não configurado! Vá em Configuração para configurar.');
+  if (!usuarioAutenticado) {
+    alert('Você precisa estar autenticado');
     return;
   }
   
   atualizarSyncStatus('sincronizando', 'Sincronizando...');
   try {
-    await carregarDoGoogleSheets();
-    renderizar();
-    atualizarStats();
-    atualizarFiltros();
-    atualizarSyncStatus('sincronizado', 'Sincronizado');
+    await carregarDados();
     alert('✅ Dados sincronizados com sucesso!');
   } catch (erro) {
     atualizarSyncStatus('erro', 'Erro na sincronização');
@@ -1078,67 +1163,14 @@ async function sincronizar() {
   }
 }
 
-function salvarConfigGoogle() {
-  const id = document.getElementById('googleSheetsId').value.trim();
-  const url = document.getElementById('appsScriptUrl').value.trim();
-  
-  if (!id) {
-    alert('Digite a ID da planilha Google Sheets');
-    return;
-  }
-  
-  if (!url) {
-    alert('Digite a URL do Apps Script');
-    return;
-  }
-  
-  const config = {
-    id: id,
-    email: document.getElementById('googleEmail').value,
-    appsScriptUrl: url
-  };
-  
-  localStorage.setItem('configGoogle', JSON.stringify(config));
-  googleSheetsId = id;
-  appsScriptUrl = url;
-  
-  alert('✅ Configuração salva! Sincronizando...');
-  sincronizar();
-}
-
-async function testarConexaoGoogle() {
-  const id = document.getElementById('googleSheetsId').value.trim();
-  
-  if (!id) {
-    alert('Digite a ID da planilha Google Sheets');
-    return;
-  }
-  
-  const configStatus = document.getElementById('configStatus');
-  configStatus.style.display = 'block';
-  configStatus.innerHTML = '<strong>⏳ Testando conexão...</strong>';
-  
-  try {
-    const url = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
-    const response = await fetch(url);
-    
-    if (response.ok) {
-      configStatus.innerHTML = '<strong style="color: var(--color-success);">✅ Conexão OK!</strong><br>A planilha foi encontrada e está acessível.';
-      configStatus.style.background = '#dcfce7';
-      configStatus.style.borderLeft = '4px solid var(--color-success)';
-    } else {
-      throw new Error('Planilha não encontrada');
-    }
-  } catch (erro) {
-    configStatus.innerHTML = `<strong style="color: var(--color-danger);">❌ Erro!</strong><br>${erro.message}<br><br>Verifique:<br>1. A ID está correta?<br>2. A planilha está compartilhada como "Link"?<br>3. As colunas são: id, titulo, autor, editora, categoria, exemplares, resumo, foto?`;
-    configStatus.style.background = '#fee2e2';
-    configStatus.style.borderLeft = '4px solid var(--color-danger)';
-  }
-}
-
-function adicionarLivro(e) {
+async function adicionarLivro(e) {
   e.preventDefault();
   
+  if (!usuarioAutenticado) {
+    alert('Você precisa estar autenticado');
+    return;
+  }
+
   const novoLivro = {
     id: Date.now(),
     titulo: document.getElementById('formTitulo').value,
@@ -1147,24 +1179,31 @@ function adicionarLivro(e) {
     categoria: document.getElementById('formCategoria').value,
     exemplares: parseInt(document.getElementById('formExemplares').value),
     resumo: document.getElementById('formResumo').value,
-    foto: document.getElementById('formFoto').value,
-    dataCriacao: new Date().toLocaleDateString('pt-BR')
+    foto: document.getElementById('formFoto').value
   };
 
-  livros.push(novoLivro);
-  salvarDoLocal();
-  
-  // Enviar para Apps Script se configurado
-  if (appsScriptUrl) {
-    enviarParaAppsScript('addBook', novoLivro);
+  try {
+    atualizarSyncStatus('sincronizando', 'Salvando...');
+    
+    const sucesso = await adicionarLivroNaPlanilha(novoLivro);
+    
+    if (sucesso) {
+      livros.push(novoLivro);
+      document.getElementById('formAdicionar').reset();
+      switchTab('consulta');
+      renderizar();
+      atualizarStats();
+      atualizarFiltros();
+      atualizarSyncStatus('sincronizado', 'Sincronizado');
+      alert('✅ Livro adicionado com sucesso!');
+    } else {
+      atualizarSyncStatus('erro', 'Erro ao salvar');
+      alert('❌ Erro ao adicionar livro');
+    }
+  } catch (erro) {
+    atualizarSyncStatus('erro', 'Erro ao salvar');
+    alert('❌ Erro: ' + erro.message);
   }
-  
-  document.getElementById('formAdicionar').reset();
-  switchTab('consulta');
-  renderizar();
-  atualizarStats();
-  atualizarFiltros();
-  alert('✅ Livro adicionado com sucesso!');
 }
 
 function filtrarLivros() {
@@ -1184,120 +1223,6 @@ function filtrarLivros() {
 
   renderizar(filtrados);
   document.getElementById('emptyState').style.display = filtrados.length === 0 ? 'block' : 'none';
-}
-
-function carregarConfiguracao() {
-  const config = localStorage.getItem('configCatalogo');
-  if (config) {
-    const parsed = JSON.parse(config);
-    if (parsed.camposAtivos) camposAtivos = parsed.camposAtivos;
-    if (parsed.categorias) categoriasList = parsed.categorias;
-  }
-  renderizarConfiguracao();
-  atualizarFormulario();
-}
-
-function salvarConfiguracao() {
-  const config = {
-    camposAtivos: camposAtivos,
-    categorias: categoriasList
-  };
-  localStorage.setItem('configCatalogo', JSON.stringify(config));
-  alert('✅ Configuração salva!');
-  atualizarFormulario();
-  atualizarFiltros();
-}
-
-function restaurarConfigPadrao() {
-  if (confirm('Tem certeza? Isso vai restaurar todas as configurações para o padrão.')) {
-    camposAtivos = camposDisponiveis.map(c => c.id);
-    categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico', 'Amizade', 'Família'];
-    salvarConfiguracao();
-    renderizarConfiguracao();
-  }
-}
-
-function renderizarConfiguracao() {
-  const container = document.getElementById('camposConfig');
-  container.innerHTML = camposDisponiveis.map(campo => `
-    <div style="padding: 12px; background: var(--color-bg-light); border-radius: 6px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
-      <input 
-        type="checkbox" 
-        id="checkbox-${campo.id}" 
-        ${camposAtivos.includes(campo.id) ? 'checked' : ''}
-        onchange="atualizarCamposAtivos()"
-      >
-      <label for="checkbox-${campo.id}" style="flex: 1; font-size: 14px; color: var(--color-text-dark); cursor: pointer; margin: 0;">${campo.label}</label>
-      ${campo.obrigatorio ? '<span style="font-size: 12px; color: var(--color-danger);">*Obrigatório</span>' : ''}
-    </div>
-  `).join('');
-
-  const listaCategorias = document.getElementById('listaCategorias');
-  listaCategorias.innerHTML = categoriasList.map((cat, idx) => `
-    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #dbeafe; color: var(--color-primary); border-radius: 6px; font-size: 13px; font-weight: 500;">
-      ${cat}
-      <button type="button" onclick="removerCategoria(${idx})" style="background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 16px; padding: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">×</button>
-    </div>
-  `).join('');
-}
-
-function atualizarCamposAtivos() {
-  camposAtivos = camposDisponiveis
-    .filter(c => document.getElementById(`checkbox-${c.id}`).checked)
-    .map(c => c.id);
-}
-
-function adicionarCategoria() {
-  const input = document.getElementById('novaCategoria');
-  const novaCategoria = input.value.trim();
-  
-  if (!novaCategoria) {
-    alert('Digite um nome para a categoria');
-    return;
-  }
-  
-  if (categoriasList.includes(novaCategoria)) {
-    alert('Esta categoria já existe');
-    return;
-  }
-  
-  categoriasList.push(novaCategoria);
-  input.value = '';
-  renderizarConfiguracao();
-}
-
-function removerCategoria(index) {
-  if (confirm(`Tem certeza que deseja remover "${categoriasList[index]}"?`)) {
-    categoriasList.splice(index, 1);
-    renderizarConfiguracao();
-  }
-}
-
-function atualizarFormulario() {
-  const formulario = document.getElementById('formAdicionar');
-  const selectCategoria = document.getElementById('formCategoria');
-  
-  const optionsHtml = '<option value="">Escolha uma categoria</option>' + 
-    categoriasList.map(cat => `<option value="${cat}">${cat}</option>`).join('');
-  selectCategoria.innerHTML = optionsHtml;
-  
-  const mapeoPorId = {
-    'titulo': 'formTitulo',
-    'autor': 'formAutor',
-    'editora': 'formEditora',
-    'categoria': 'formCategoria',
-    'exemplares': 'formExemplares',
-    'resumo': 'formResumo',
-    'foto': 'formFoto'
-  };
-  
-  Object.entries(mapeoPorId).forEach(([campoId, elementId]) => {
-    const elemento = document.getElementById(elementId);
-    if (elemento) {
-      const pai = elemento.parentElement;
-      pai.style.display = camposAtivos.includes(campoId) ? 'block' : 'none';
-    }
-  });
 }
 
 function atualizarFiltros() {
@@ -1383,10 +1308,6 @@ function abrirModal(id) {
       <span class="modal-label">Resumo</span>
       <div class="modal-value">${livroSelecionado.resumo || '—'}</div>
     </div>
-    <div class="modal-field">
-      <span class="modal-label">Adicionado em</span>
-      <div class="modal-value">${livroSelecionado.dataCriacao}</div>
-    </div>
   `;
 
   document.getElementById('modal').classList.add('active');
@@ -1398,23 +1319,33 @@ function fecharModal(event) {
   livroSelecionado = null;
 }
 
-function deletarLivro() {
+async function deletarLivro() {
   if (!livroSelecionado) return;
-  if (confirm(`Tem certeza que deseja deletar "${livroSelecionado.titulo}"?`)) {
-    const idLivro = livroSelecionado.id;
+  
+  if (!confirm(`Tem certeza que deseja deletar "${livroSelecionado.titulo}"?`)) {
+    return;
+  }
+
+  try {
+    atualizarSyncStatus('sincronizando', 'Deletando...');
     
-    livros = livros.filter(l => l.id !== idLivro);
-    salvarDoLocal();
+    const sucesso = await deletarLivroDaPlanilha(livroSelecionado.id);
     
-    // Enviar para Apps Script se configurado
-    if (appsScriptUrl) {
-      enviarParaAppsScript('deleteBook', { id: idLivro });
+    if (sucesso) {
+      livros = livros.filter(l => l.id !== livroSelecionado.id);
+      fecharModal();
+      renderizar();
+      atualizarStats();
+      atualizarFiltros();
+      atualizarSyncStatus('sincronizado', 'Sincronizado');
+      alert('✅ Livro deletado!');
+    } else {
+      atualizarSyncStatus('erro', 'Erro ao deletar');
+      alert('❌ Erro ao deletar livro');
     }
-    
-    fecharModal();
-    renderizar();
-    atualizarStats();
-    atualizarFiltros();
+  } catch (erro) {
+    atualizarSyncStatus('erro', 'Erro ao deletar');
+    alert('❌ Erro: ' + erro.message);
   }
 }
 
@@ -1428,15 +1359,8 @@ function editarLivro() {
   document.getElementById('formResumo').value = livroSelecionado.resumo;
   document.getElementById('formFoto').value = livroSelecionado.foto;
   
-  const idAntiga = livroSelecionado.id;
-  livros = livros.filter(l => l.id !== idAntiga);
-  salvarDoLocal();
-  
-  // Enviar deleção para Apps Script se configurado
-  if (appsScriptUrl) {
-    enviarParaAppsScript('deleteBook', { id: idAntiga });
-  }
-  
+  // Deletar versão antiga
+  livros = livros.filter(l => l.id !== livroSelecionado.id);
   fecharModal();
   switchTab('adicionar');
 }
@@ -1448,24 +1372,12 @@ function switchTab(tabName) {
   const titles = {
     consulta: 'Consultar Livros',
     adicionar: 'Adicionar Livro',
-    relatorios: 'Relatórios',
-    configuracao: 'Configurações'
+    relatorios: 'Relatórios'
   };
   document.getElementById('pageTitle').textContent = titles[tabName];
   
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   event.target.classList.add('active');
-  
-  if (tabName === 'configuracao') {
-    renderizarConfiguracao();
-    const config = localStorage.getItem('configGoogle');
-    if (config) {
-      const parsed = JSON.parse(config);
-      document.getElementById('googleSheetsId').value = parsed.id || '';
-      document.getElementById('googleEmail').value = parsed.email || '';
-      document.getElementById('appsScriptUrl').value = parsed.appsScriptUrl || '';
-    }
-  }
 }
 
 function gerarRelatorios() {
@@ -1515,8 +1427,6 @@ function exportarDados() {
   a.click();
   URL.revokeObjectURL(url);
 }
-
-carregarDados();
 </script>
 
 </body>
