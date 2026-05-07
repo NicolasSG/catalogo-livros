@@ -1282,7 +1282,24 @@ function switchTab(tabName) {
   document.getElementById('pageTitle').textContent = titles[tabName];
   
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  event.target.classList.add('active');
+  
+  // Adicionar classe active ao botão correto (se existir event)
+  if (event && event.target) {
+    event.target.classList.add('active');
+  } else {
+    // Se não tiver evento, encontrar o botão correto
+    const buttons = document.querySelectorAll('.nav-item');
+    const nomeEsperado = tabName === 'consulta' ? '🔍' : 
+                         tabName === 'adicionar' ? '➕' :
+                         tabName === 'relatorios' ? '📊' : '⚙️';
+    
+    for (let btn of buttons) {
+      if (btn.textContent.includes(nomeEsperado)) {
+        btn.classList.add('active');
+        break;
+      }
+    }
+  }
   
   if (tabName === 'configuracao') {
     carregarConfiguracao();
