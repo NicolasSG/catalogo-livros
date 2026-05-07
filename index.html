@@ -6,8 +6,8 @@
   <title>Catálogo de Livros - Biblioteca</title>
   
   <!-- Google APIs -->
-  <script src="https://apis.google.com/js/api.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   
   <style>
@@ -925,19 +925,49 @@ let usuarioAutenticado = false;
 // ============================================
 // INICIALIZAR GOOGLE API
 // ============================================
-window.onload = function() {
+function esperarGoogleCarregar() {
+  if (typeof google !== 'undefined' && typeof gapi !== 'undefined') {
+    inicializarApp();
+  } else {
+    setTimeout(esperarGoogleCarregar, 100);
+  }
+}
+
+window.addEventListener('load', function() {
+  esperarGoogleCarregar();
+});
+
+function inicializarApp() {
+  // Inicializar Google Accounts ID
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: fazerLoginCallback
+  });
+  
+  // Renderizar botão de login
+  google.accounts.id.renderButton(
+    document.getElementById('google-signin-button'),
+    { 
+      theme: 'outline', 
+      size: 'large',
+      text: 'signin_with'
+    }
+  );
+  
+  // Inicializar Google API para Sheets
   carregarAPIGoogle();
-};
+}
 
 function carregarAPIGoogle() {
-  gapi.load('client:auth2', inicializarGoogle);
+  gapi.load('client', inicializarGoogle);
 }
 
 function inicializarGoogle() {
   gapi.client.init({
+    apiKey: '',
+    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
     clientId: GOOGLE_CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4']
+    scope: 'https://www.googleapis.com/auth/spreadsheets'
   }).then(() => {
     gapiInitialized = true;
     verificarAutenticacao();
@@ -947,28 +977,9 @@ function inicializarGoogle() {
 }
 
 function verificarAutenticacao() {
-  const auth = gapi.auth2.getAuthInstance();
-  if (auth && auth.isSignedIn.get()) {
-    usuarioAutenticado = true;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appScreen').style.display = 'flex';
-    mostrarInfoUsuario();
-    carregarDados();
-  } else {
-    mostrarLoginGoogle();
-  }
-}
-
-function mostrarLoginGoogle() {
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: fazerLoginCallback
-  });
-  
-  google.accounts.id.renderButton(
-    document.getElementById('google-signin-button'),
-    { theme: 'outline', size: 'large' }
-  );
+  // O botão já foi renderizado no onload, só mostramos a tela de login
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
 }
 
 function fazerLoginCallback(response) {
@@ -1001,16 +1012,16 @@ function mostrarInfoUsuario() {
 }
 
 function fazerLogout() {
-  const auth = gapi.auth2.getAuthInstance();
-  auth.signOut().then(() => {
-    usuarioAutenticado = false;
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userEmail');
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('appScreen').style.display = 'none';
-    livros = [];
-    verificarAutenticacao();
-  });
+  // Logout com Google Accounts
+  google.accounts.id.disableAutoSelect();
+  
+  usuarioAutenticado = false;
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userEmail');
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appScreen').style.display = 'none';
+  livros = [];
+  verificarAutenticacao();
 }
 
 // ============================================
