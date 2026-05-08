@@ -864,7 +864,7 @@
 // ============================================
 let livros = [];
 let livroSelecionado = null;
-let appsScriptUrl = 'https://script.google.com/macros/s/AKfycbzDcI3EukA35GK2Aw6x8e-Y9TgSJBkqIABPXCVjdlLTTMFvM-EDqTIwm9Ok_X_47doUqg/exec';
+let appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw-fFfKhZ9ZhZGLVjeKRHLxC8X595e3Z-Ivur6NfPExXqnjQZv4GH05S7w1YWvzSUifqA/exec';
 let googleSheetsId = '1ZfLN5R_gwIeyVcpy6O5Fkg8vzrqryZjb2jiJxjd7AgM';
 
 const camposDisponiveis = [
@@ -874,7 +874,7 @@ const camposDisponiveis = [
 ];
 
 let camposAtivos = camposDisponiveis.map(c => c.id);
-let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico'];
+let categoriasList = []; // Começa vazio, vai ser carregado da planilha
 
 // Carregar ao iniciar
 window.addEventListener('load', function() {
@@ -1356,12 +1356,6 @@ function exportarDados() {
 // GERENCIAMENTO DE CAMPOS
 // ============================================
 function carregarConfigCampos() {
-  const config = localStorage.getItem('configCampos');
-  if (config) {
-    const parsed = JSON.parse(config);
-    if (parsed.camposAtivos) camposAtivos = parsed.camposAtivos;
-    if (parsed.categorias) categoriasList = parsed.categorias;
-  }
   renderizarConfigCampos();
   atualizarFormulario();
 }
@@ -1404,19 +1398,13 @@ function atualizarCamposAtivos() {
 }
 
 function salvarConfigCampos() {
-  const config = {
-    camposAtivos: camposAtivos,
-    categorias: categoriasList
-  };
-  localStorage.setItem('configCampos', JSON.stringify(config));
-  alert('✅ Configuração salva!');
   atualizarFormulario();
+  alert('✅ Configuração salva!');
 }
 
 function restaurarConfigPadrao() {
-  if (confirm('Tem certeza? Isso vai restaurar todas as configurações para o padrão.')) {
+  if (confirm('Tem certeza? Isso vai restaurar os campos para o padrão.')) {
     camposAtivos = camposDisponiveis.map(c => c.id);
-    categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério', 'Humor', 'Educativo', 'Clássico'];
     salvarConfigCampos();
     renderizarConfigCampos();
   }
