@@ -807,33 +807,19 @@
       <div id="tab-config" class="tab-content">
         <div style="max-width: 800px;">
           <div class="config-section">
-            <h3>🔗 Configuração Google Sheets</h3>
+            <h3>🏷️ Categorias</h3>
             <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">
-              Cole aqui a URL do Apps Script que você criou:
+              Adicione ou remova categorias:
             </p>
             
-            <div class="form-group">
-              <label>URL do Apps Script</label>
-              <input type="url" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
-              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
-                Exemplo: https://script.google.com/macros/s/AKfycbw.../exec
-              </small>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+              <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px;">
+              <button class="primary" onclick="adicionarCategoria()">Adicionar</button>
             </div>
 
-            <div class="form-group">
-              <label>ID da Planilha Google Sheets</label>
-              <input type="text" id="googleSheetsId" placeholder="Cole aqui a ID da planilha">
-              <small style="color: var(--color-text-light); display: block; margin-top: 8px;">
-                URL: docs.google.com/spreadsheets/d/<strong style="color: var(--color-primary);">ID_AQUI</strong>/edit
-              </small>
+            <div id="listaCategorias" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              <!-- Preenchido por JavaScript -->
             </div>
-
-            <div style="display: flex; gap: 10px;">
-              <button class="primary" onclick="salvarConfiguracao()" style="flex: 1;">✅ Salvar</button>
-              <button onclick="testarConexao()">🔍 Testar</button>
-            </div>
-
-            <div id="statusConfig" style="margin-top: 16px; padding: 12px; border-radius: 6px; display: none;"></div>
           </div>
 
           <div class="config-section">
@@ -847,22 +833,6 @@
             <div style="display: flex; gap: 10px; margin-top: 20px;">
               <button class="primary" onclick="salvarConfigCampos()" style="flex: 1;">✅ Salvar campos</button>
               <button onclick="restaurarConfigPadrao()">↻ Restaurar padrão</button>
-            </div>
-          </div>
-
-          <div class="config-section">
-            <h3>🏷️ Categorias</h3>
-            <p style="margin-bottom: 16px; color: var(--color-text-light); font-size: 14px;">
-              Adicione ou remova categorias:
-            </p>
-            
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-              <input type="text" id="novaCategoria" placeholder="Nova categoria..." style="flex: 1; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 14px;">
-              <button class="primary" onclick="adicionarCategoria()">Adicionar</button>
-            </div>
-
-            <div id="listaCategorias" style="display: flex; flex-wrap: wrap; gap: 8px;">
-              <!-- Preenchido por JavaScript -->
             </div>
           </div>
         </div>
@@ -894,8 +864,8 @@
 // ============================================
 let livros = [];
 let livroSelecionado = null;
-let appsScriptUrl = '';
-let googleSheetsId = '';
+let appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw-fFfKhZ9ZhZGLVjeKRHLxC8X595e3Z-Ivur6NfPExXqnjQZv4GH05S7w1YWvzSUifqA/exec';
+let googleSheetsId = '1ZfLN5R_gwIeyVcpy6O5Fkg8vzrqryZjb2jiJxjd7AgM';
 
 const camposDisponiveis = [
   { id: 'editora', label: 'Editora', obrigatorio: false },
@@ -916,67 +886,11 @@ window.addEventListener('load', function() {
 });
 
 // ============================================
-// CONFIGURAÇÃO
+// CONFIGURAÇÃO INICIAL
 // ============================================
 function carregarConfiguracao() {
-  const config = localStorage.getItem('configApp');
-  if (config) {
-    const parsed = JSON.parse(config);
-    appsScriptUrl = parsed.appsScriptUrl || '';
-    googleSheetsId = parsed.googleSheetsId || '';
-    document.getElementById('appsScriptUrl').value = appsScriptUrl;
-    document.getElementById('googleSheetsId').value = googleSheetsId;
-  }
-}
-
-function salvarConfiguracao() {
-  appsScriptUrl = document.getElementById('appsScriptUrl').value.trim();
-  googleSheetsId = document.getElementById('googleSheetsId').value.trim();
-  
-  if (!appsScriptUrl || !googleSheetsId) {
-    alert('Preencha todos os campos!');
-    return;
-  }
-  
-  localStorage.setItem('configApp', JSON.stringify({
-    appsScriptUrl,
-    googleSheetsId
-  }));
-  
-  alert('✅ Configuração salva!');
-  carregarDadosPlanilha();
-}
-
-async function testarConexao() {
-  const url = document.getElementById('appsScriptUrl').value.trim();
-  const id = document.getElementById('googleSheetsId').value.trim();
-  
-  if (!url || !id) {
-    alert('Preencha os campos!');
-    return;
-  }
-  
-  const status = document.getElementById('statusConfig');
-  status.style.display = 'block';
-  status.innerHTML = '<strong>⏳ Testando...</strong>';
-  
-  try {
-    // Testar leitura da planilha
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${id}/export?format=csv`;
-    const response = await fetch(sheetUrl);
-    
-    if (response.ok) {
-      status.innerHTML = '<strong style="color: var(--color-success);">✅ Conexão OK!</strong>';
-      status.style.background = '#dcfce7';
-      status.style.borderLeft = '4px solid var(--color-success)';
-    } else {
-      throw new Error('Planilha não encontrada');
-    }
-  } catch (erro) {
-    status.innerHTML = `<strong style="color: var(--color-danger);">❌ Erro!</strong><br>${erro.message}`;
-    status.style.background = '#fee2e2';
-    status.style.borderLeft = '4px solid var(--color-danger)';
-  }
+  // Credenciais já estão no código, nada a carregar
+  console.log('Credenciais carregadas do código');
 }
 
 // ============================================
