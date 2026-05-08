@@ -896,7 +896,7 @@ function carregarConfiguracao() {
 
 async function carregarCategoriasDaPlanilha() {
   try {
-    const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv`;
+    const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv&gid=1`;
     const response = await fetch(url);
     
     if (!response.ok) {
@@ -906,32 +906,31 @@ async function carregarCategoriasDaPlanilha() {
     const csv = await response.text();
     const lines = csv.split('\n');
     
-    // Procurar pela aba Configuracao
-    let encontrouConfig = false;
+    // A primeira linha é o header "categoria"
+    // As linhas seguintes são as categorias (até encontrar linha vazia)
     let categorias = [];
     
-    for (let i = 0; i < lines.length; i++) {
+    for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Detectar início da aba Configuracao
-      if (line.includes('Configuracao') || (i > 0 && lines[i-1].includes('Banco_de_dados'))) {
-        encontrouConfig = true;
-        continue;
-      }
+      // Parar se encontrar linha vazia
+      if (!line) break;
       
-      // Se encontrou config e a linha não está vazia e não é o header
-      if (encontrouConfig && line && line !== 'categoria') {
-        const categoria = line.replace(/^"|"$/g, '').trim();
-        if (categoria && categoria !== 'categoria') {
-          categorias.push(categoria);
-        }
+      // Remover aspas e adicionar à lista
+      const categoria = line.replace(/^"|"$/g, '').trim();
+      if (categoria) {
+        categorias.push(categoria);
       }
     }
     
     // Se encontrou categorias, atualizar a lista
     if (categorias.length > 0) {
       categoriasList = categorias;
-      console.log('Categorias carregadas:', categoriasList);
+      console.log('Categorias carregadas da planilha:', categoriasList);
+      renderizarConfigCampos();
+    } else {
+      console.log('Nenhuma categoria encontrada');
+      categoriasList = [];
     }
   } catch (erro) {
     console.error('Erro ao carregar categorias:', erro);
