@@ -880,9 +880,9 @@ let categoriasList = []; // Começa vazio, vai ser carregado da planilha
 window.addEventListener('load', function() {
   setTimeout(async () => {
     carregarConfiguracao();
+    await carregarDadosPlanilha();
     await carregarCategoriasDaPlanilha();
     carregarConfigCampos();
-    carregarDadosPlanilha();
   }, 500);
 });
 
@@ -896,42 +896,26 @@ function carregarConfiguracao() {
 
 async function carregarCategoriasDaPlanilha() {
   try {
-    const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv&gid=1`;
-    const response = await fetch(url);
+    // As categorias vêm dos livros já carregados
+    // Extrair categorias únicas dos livros
+    const categoriasDosCategoriasList = [...new Set(livros.map(l => l.categoria).filter(c => c))];
     
-    if (!response.ok) {
-      throw new Error('Erro ao carregar planilha');
-    }
+    // Carregar categorias adicionadas na aba Configuracao via Apps Script
+    const response = await fetch(appsScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'getCategories'
+      })
+    });
     
-    const csv = await response.text();
-    const lines = csv.split('\n');
-    
-    // A primeira linha é o header "categoria"
-    // As linhas seguintes são as categorias (até encontrar linha vazia)
-    let categorias = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      // Parar se encontrar linha vazia
-      if (!line) break;
-      
-      // Remover aspas e adicionar à lista
-      const categoria = line.replace(/^"|"$/g, '').trim();
-      if (categoria) {
-        categorias.push(categoria);
-      }
-    }
-    
-    // Se encontrou categorias, atualizar a lista
-    if (categorias.length > 0) {
-      categoriasList = categorias;
-      console.log('Categorias carregadas da planilha:', categoriasList);
-      renderizarConfigCampos();
-    } else {
-      console.log('Nenhuma categoria encontrada');
-      categoriasList = [];
-    }
+    // Como mode: 'no-cors' não retorna resposta, usar as categorias dos livros
+    categoriasList = categoriasDosCategoriasList;
+    console.log('Categorias carregadas:', categoriasList);
+    renderizarConfigCampos();
   } catch (erro) {
     console.error('Erro ao carregar categorias:', erro);
   }
