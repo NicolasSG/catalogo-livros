@@ -878,8 +878,9 @@ let categoriasList = ['Animais', 'Fantasia', 'Aventura', 'Natureza', 'Mistério'
 
 // Carregar ao iniciar
 window.addEventListener('load', function() {
-  setTimeout(() => {
+  setTimeout(async () => {
     carregarConfiguracao();
+    await carregarCategoriasDaPlanilha();
     carregarConfigCampos();
     carregarDadosPlanilha();
   }, 500);
@@ -893,9 +894,49 @@ function carregarConfiguracao() {
   console.log('Credenciais carregadas do código');
 }
 
-// ============================================
-// CARREGAR DADOS DA PLANILHA
-// ============================================
+async function carregarCategoriasDaPlanilha() {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/export?format=csv`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error('Erro ao carregar planilha');
+    }
+    
+    const csv = await response.text();
+    const lines = csv.split('\n');
+    
+    // Procurar pela aba Configuracao
+    let encontrouConfig = false;
+    let categorias = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Detectar início da aba Configuracao
+      if (line.includes('Configuracao') || (i > 0 && lines[i-1].includes('Banco_de_dados'))) {
+        encontrouConfig = true;
+        continue;
+      }
+      
+      // Se encontrou config e a linha não está vazia e não é o header
+      if (encontrouConfig && line && line !== 'categoria') {
+        const categoria = line.replace(/^"|"$/g, '').trim();
+        if (categoria && categoria !== 'categoria') {
+          categorias.push(categoria);
+        }
+      }
+    }
+    
+    // Se encontrou categorias, atualizar a lista
+    if (categorias.length > 0) {
+      categoriasList = categorias;
+      console.log('Categorias carregadas:', categoriasList);
+    }
+  } catch (erro) {
+    console.error('Erro ao carregar categorias:', erro);
+  }
+}
 function atualizarSyncStatus(status, mensagem) {
   const syncStatus = document.getElementById('syncStatus');
   const syncIcon = document.getElementById('syncIcon');
@@ -1403,7 +1444,7 @@ function atualizarFormulario() {
   });
 }
 
-function adicionarCategoria() {
+async function adicionarCategoria() {
   const input = document.getElementById('novaCategoria');
   const novaCategoria = input.value.trim();
   
@@ -1417,15 +1458,51 @@ function adicionarCategoria() {
     return;
   }
   
+  // Adicionar localmente primeiro
   categoriasList.push(novaCategoria);
   input.value = '';
   renderizarConfigCampos();
+  
+  // Salvar na planilha
+  try {
+    await fetch(appsScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'addCategory',
+        categoria: novaCategoria
+      })
+    });
+    
+    alert('✅ Categoria adicionada!');
+  } catch (erro) {
+    console.error('Erro ao adicionar categoria:', erro);
+    alert('❌ Erro ao salvar categoria');
+  }
 }
 
 function removerCategoria(index) {
-  if (confirm(`Tem certeza que deseja remover "${categoriasList[index]}"?`)) {
+  const categoria = categoriasList[index];
+  
+  if (confirm(`Tem certeza que deseja remover "${categoria}"?`)) {
     categoriasList.splice(index, 1);
     renderizarConfigCampos();
+    
+    // Deletar da planilha
+    fetch(appsScriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'deleteCategory',
+        categoria: categoria
+      })
+    }).catch(erro => console.error('Erro ao deletar categoria:', erro));
   }
 }
 </script>
