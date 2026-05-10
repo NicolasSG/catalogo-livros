@@ -35,6 +35,22 @@ function doPost(e) {
       return jsonResponse({ status: "success" });
     }
 
+    if (action === "editBook") {
+      var sheet = ss.getSheets()[0];
+      var data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === String(body.id)) {
+          sheet.getRange(i + 1, 1, 1, 8).setValues([[
+            body.id, body.titulo, body.autor, body.editora,
+            body.categoria, body.exemplares, body.resumo, body.foto
+          ]]);
+          break;
+        }
+      }
+      registrarAuditoria(ss, userEmail, "editBook", "Livro: " + body.titulo + " (ID: " + body.id + ")");
+      return jsonResponse({ status: "success" });
+    }
+
     if (action === "deleteBook") {
       var sheet = ss.getSheets()[0];
       var data = sheet.getDataRange().getValues();

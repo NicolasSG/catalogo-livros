@@ -4,7 +4,7 @@
 let livros = [];
 let livroSelecionado = null;
 let appsScriptUrl =
-  "https://script.google.com/macros/s/AKfycbzDcI3EukA35GK2Aw6x8e-Y9TgSJBkqIABPXCVjdlLTTMFvM-EDqTIwm9Ok_X_47doUqg/exec";
+  "https://script.google.com/macros/s/AKfycbwcDKdalVsZvRhJXYhenKxNggkAsKyzKs2J2CdOtTSiPM7_dUrlpC07bM8RIOOaPO1OCw/exec";
 let googleSheetsId = "1ZfLN5R_gwIeyVcpy6O5Fkg8vzrqryZjb2jiJxjd7AgM";
 let modoEdicao = false;
 let livroEditandoId = null;
@@ -389,6 +389,34 @@ async function salvarNoAppsScript(livro) {
   }
 }
 
+async function editarNoAppsScript(livro) {
+  if (!appsScriptUrl) return false;
+
+  try {
+    await fetch(appsScriptUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "editBook",
+        userEmail: usuarioLogado ? usuarioLogado.email : "anonimo",
+        id: livro.id,
+        titulo: livro.titulo,
+        autor: livro.autor,
+        editora: livro.editora,
+        categoria: livro.categorias.join(", "),
+        exemplares: livro.exemplares,
+        resumo: livro.resumo,
+        foto: livro.foto,
+      }),
+    });
+    return true;
+  } catch (erro) {
+    console.error("Erro:", erro);
+    return false;
+  }
+}
+
 async function deletarDoAppsScript(id) {
   if (!appsScriptUrl) return false;
 
@@ -469,9 +497,10 @@ async function adicionarLivro(e) {
   document.getElementById("btnSalvar").disabled = true;
   const eraEdicao = modoEdicao;
   if (modoEdicao) {
-    await deletarDoAppsScript(id);
+    await editarNoAppsScript(novoLivro);
+  } else {
+    await salvarNoAppsScript(novoLivro);
   }
-  await salvarNoAppsScript(novoLivro);
   // document.getElementById("loadingOverlay").style.display = "none"; // keep shown
   document.getElementById("btnSalvar").disabled = false;
   document.getElementById("formAdicionar").reset();
