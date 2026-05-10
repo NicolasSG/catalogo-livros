@@ -18,7 +18,208 @@ const camposDisponiveis = [
 let camposAtivos = camposDisponiveis.map((c) => c.id);
 let categoriasList = [];
 
+// ============================================
+// AUTENTICAÇÃO E CONTROLE DE ACESSO
+// Para ativar o login com Google:
+// 1. Acesse console.cloud.google.com
+// 2. Crie um projeto e ative a Google Identity API
+// 3. Em "Credentials", crie um OAuth 2.0 Client ID (Web application)
+// 4. Em "Authorized JavaScript origins", adicione o domínio do seu app
+// 5. Substitua o valor de GOOGLE_CLIENT_ID abaixo
+// ============================================
+const GOOGLE_CLIENT_ID =
+  "621833041327-p3pb3i69nf72ugrio9khcpl6e8ak5kr5.apps.googleusercontent.com";
+
+let usuarioLogado = null;
+let roleUsuario = "Visualizador";
+
+function inicializarAuth() {
+  const sessao = sessionStorage.getItem("sessaoUsuario");
+  if (sessao) {
+    try {
+      const dados = JSON.parse(sessao);
+      usuarioLogado = dados.usuario;
+      roleUsuario = dados.role;
+      ocultarLoginOverlay();
+      atualizarInfoUsuario();
+      aplicarPermissoesUI();
+      return;
+    } catch (e) {
+      sessionStorage.removeItem("sessaoUsuario");
+    }
+  }
+
+  mostrarLoginOverlay();
+
+  const clientIdValido =
+    GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.startsWith("SEU_");
+  if (!clientIdValido) {
+    document.getElementById("loginSemAuth").style.display = "block";
+    document.getElementById("loginStatus").textContent =
+      "Login com Google não configurado. Configure o GOOGLE_CLIENT_ID em app.js para ativar.";
+    return;
+  }
+
+  aguardarGIS();
+}
+
+function aguardarGIS() {
+  if (window.google && window.google.accounts && window.google.accounts.id) {
+    inicializarGIS();
+  } else {
+    setTimeout(aguardarGIS, 100);
+  }
+}
+
+function inicializarGIS() {
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleCredentialResponse,
+    auto_select: false,
+    cancel_on_tap_outside: false,
+  });
+
+  google.accounts.id.renderButton(
+    document.getElementById("googleSignInButton"),
+    {
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      locale: "pt-BR",
+      width: 300,
+    },
+  );
+}
+
+async function handleCredentialResponse(response) {
+  document.getElementById("loginStatus").textContent = "Verificando...";
+
+  try {
+    const payload = parseJwt(response.credential);
+    usuarioLogado = {
+      email: payload.email,
+      name: payload.name || payload.email,
+      picture: payload.picture || "",
+    };
+
+    roleUsuario = await buscarRoleUsuario(usuarioLogado.email);
+
+    sessionStorage.setItem(
+      "sessaoUsuario",
+      JSON.stringify({ usuario: usuarioLogado, role: roleUsuario }),
+    );
+
+    ocultarLoginOverlay();
+    atualizarInfoUsuario();
+    aplicarPermissoesUI();
+  } catch (e) {
+    document.getElementById("loginStatus").textContent =
+      "Erro ao autenticar. Tente novamente.";
+    console.error("Erro no login:", e);
+  }
+}
+
+function parseJwt(token) {
+  const base64Url = token.split(".")[1];
+  const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+  const json = decodeURIComponent(
+    atob(base64)
+      .split("")
+      .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+      .join(""),
+  );
+  return JSON.parse(json);
+}
+
+async function buscarRoleUsuario(email) {
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${googleSheetsId}/gviz/tq?tqx=out:csv&sheet=Usuarios`;
+    const response = await fetch(url);
+    if (!response.ok) return "Visualizador";
+
+    const csv = await response.text();
+    const linhas = csv
+      .split("\n")
+      .slice(1)
+      .filter((l) => l.trim());
+
+    for (const linha of linhas) {
+      const cols = linha.split(",").map((c) => c.replace(/^"|"$/g, "").trim());
+      if (cols[0].toLowerCase() === email.toLowerCase()) {
+        if (["Admin", "Editor", "Visualizador"].includes(cols[1]))
+          return cols[1];
+      }
+    }
+
+    return "Visualizador";
+  } catch (e) {
+    console.error("Erro ao buscar role:", e);
+    return "Visualizador";
+  }
+}
+
+function aplicarPermissoesUI() {
+  const podeEditar = roleUsuario === "Admin" || roleUsuario === "Editor";
+  const podeAdmin = roleUsuario === "Admin";
+
+  document.getElementById("navAdicionar").style.display = podeEditar
+    ? ""
+    : "none";
+  document.getElementById("navConfig").style.display = podeAdmin ? "" : "none";
+}
+
+function atualizarInfoUsuario() {
+  if (!usuarioLogado) return;
+
+  document.getElementById("userInfo").style.display = "flex";
+
+  const avatar = document.getElementById("userAvatar");
+  if (usuarioLogado.picture) {
+    avatar.src = usuarioLogado.picture;
+    avatar.style.display = "block";
+  }
+
+  document.getElementById("userName").textContent = usuarioLogado.name;
+
+  const badge = document.getElementById("userRole");
+  badge.textContent = roleUsuario;
+  badge.className = "role-badge role-" + roleUsuario.toLowerCase();
+}
+
+function mostrarLoginOverlay() {
+  document.getElementById("loginOverlay").style.display = "flex";
+}
+
+function ocultarLoginOverlay() {
+  document.getElementById("loginOverlay").style.display = "none";
+}
+
+function continuarSemLogin() {
+  usuarioLogado = { email: "visitante", name: "Visitante", picture: "" };
+  roleUsuario = "Visualizador";
+  ocultarLoginOverlay();
+  atualizarInfoUsuario();
+  aplicarPermissoesUI();
+}
+
+function logout() {
+  sessionStorage.removeItem("sessaoUsuario");
+  usuarioLogado = null;
+  roleUsuario = "Visualizador";
+  document.getElementById("userInfo").style.display = "none";
+  document.getElementById("userAvatar").style.display = "none";
+
+  if (window.google && window.google.accounts && window.google.accounts.id) {
+    google.accounts.id.disableAutoSelect();
+  }
+
+  document.getElementById("loginStatus").textContent = "";
+  mostrarLoginOverlay();
+  aplicarPermissoesUI();
+}
+
 window.addEventListener("load", function () {
+  inicializarAuth();
   setTimeout(async () => {
     carregarConfiguracao();
     await carregarDadosPlanilha();
@@ -170,6 +371,7 @@ async function salvarNoAppsScript(livro) {
       },
       body: JSON.stringify({
         action: "addBook",
+        userEmail: usuarioLogado ? usuarioLogado.email : "anonimo",
         id: livro.id,
         titulo: livro.titulo,
         autor: livro.autor,
@@ -199,6 +401,7 @@ async function deletarDoAppsScript(id) {
       },
       body: JSON.stringify({
         action: "deleteBook",
+        userEmail: usuarioLogado ? usuarioLogado.email : "anonimo",
         id: id,
       }),
     });
@@ -211,6 +414,11 @@ async function deletarDoAppsScript(id) {
 
 async function adicionarLivro(e) {
   e.preventDefault();
+
+  if (roleUsuario !== "Admin" && roleUsuario !== "Editor") {
+    alert("Você não tem permissão para adicionar ou editar livros.");
+    return;
+  }
 
   if (!appsScriptUrl) {
     alert("Configure o Apps Script primeiro!");
@@ -281,6 +489,12 @@ async function adicionarLivro(e) {
 
 async function deletarLivro() {
   if (!livroSelecionado) return;
+
+  if (roleUsuario !== "Admin") {
+    alert("Apenas administradores podem deletar livros.");
+    return;
+  }
+
   if (confirm(`Deletar "${livroSelecionado.titulo}"?`)) {
     atualizarSyncStatus("sincronizando", "Deletando...");
     document.getElementById("loadingOverlay").style.display = "flex";
@@ -297,6 +511,12 @@ async function deletarLivro() {
 
 function editarLivro() {
   if (!livroSelecionado) return;
+
+  if (roleUsuario !== "Admin" && roleUsuario !== "Editor") {
+    alert("Você não tem permissão para editar livros.");
+    return;
+  }
+
   modoEdicao = true;
   livroEditandoId = livroSelecionado.id;
   document.getElementById("formTitulo").value = livroSelecionado.titulo;
@@ -430,6 +650,13 @@ function abrirModal(id) {
     </div>
   `;
 
+  const podeEditar = roleUsuario === "Admin" || roleUsuario === "Editor";
+  document.getElementById("btnEditarModal").style.display = podeEditar
+    ? ""
+    : "none";
+  document.getElementById("btnDeletarModal").style.display =
+    roleUsuario === "Admin" ? "" : "none";
+
   document.getElementById("modal").classList.add("active");
 }
 
@@ -440,6 +667,14 @@ function fecharModal(event) {
 }
 
 function switchTab(tabName, limparFormulario = true) {
+  if (
+    tabName === "adicionar" &&
+    roleUsuario !== "Admin" &&
+    roleUsuario !== "Editor"
+  )
+    return;
+  if (tabName === "config" && roleUsuario !== "Admin") return;
+
   document
     .querySelectorAll(".tab-content")
     .forEach((t) => t.classList.remove("active"));
@@ -643,6 +878,11 @@ function atualizarFormulario() {
 }
 
 async function adicionarCategoria() {
+  if (roleUsuario !== "Admin") {
+    alert("Apenas administradores podem gerenciar categorias.");
+    return;
+  }
+
   const input = document.getElementById("novaCategoria");
   const novaCategoria = input.value.trim();
 
@@ -670,6 +910,7 @@ async function adicionarCategoria() {
       },
       body: JSON.stringify({
         action: "addCategory",
+        userEmail: usuarioLogado ? usuarioLogado.email : "anonimo",
         categoria: novaCategoria,
       }),
     });
@@ -683,6 +924,11 @@ async function adicionarCategoria() {
 }
 
 function removerCategoria(index) {
+  if (roleUsuario !== "Admin") {
+    alert("Apenas administradores podem gerenciar categorias.");
+    return;
+  }
+
   const categoria = categoriasList[index];
 
   if (confirm(`Tem certeza que deseja remover "${categoria}"?`)) {
@@ -697,6 +943,7 @@ function removerCategoria(index) {
       },
       body: JSON.stringify({
         action: "deleteCategory",
+        userEmail: usuarioLogado ? usuarioLogado.email : "anonimo",
         categoria: categoria,
       }),
     }).catch((erro) => console.error("Erro ao deletar categoria:", erro));

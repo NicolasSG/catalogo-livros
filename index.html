@@ -6,6 +6,7 @@
     <title>Catálogo de Livros - Biblioteca</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link rel="stylesheet" href="styles.css" />
+    <script src="https://accounts.google.com/gsi/client" defer></script>
   </head>
   <body>
     <div class="app-container">
@@ -18,7 +19,7 @@
           <span>🔍</span>
           <span>Consultar</span>
         </button>
-        <button class="nav-item" onclick="switchTab('adicionar')">
+        <button id="navAdicionar" class="nav-item" onclick="switchTab('adicionar')">
           <span>➕</span>
           <span>Adicionar</span>
         </button>
@@ -26,7 +27,7 @@
           <span>📊</span>
           <span>Relatórios</span>
         </button>
-        <button class="nav-item" onclick="switchTab('config')">
+        <button id="navConfig" class="nav-item" onclick="switchTab('config')">
           <span>⚙️</span>
           <span>Configuração</span>
         </button>
@@ -42,6 +43,14 @@
             </div>
             <button onclick="sincronizar()">🔄 Sincronizar</button>
             <button onclick="exportarDados()">📥 Exportar</button>
+            <div id="userInfo" class="user-info" style="display:none">
+              <img id="userAvatar" class="user-avatar" src="" alt="" style="display:none">
+              <div class="user-details">
+                <span id="userName" class="user-name"></span>
+                <span id="userRole" class="role-badge"></span>
+              </div>
+              <button onclick="logout()" class="btn-logout">Sair</button>
+            </div>
           </div>
         </div>
 
@@ -132,7 +141,17 @@
 
                 <div class="form-group">
                   <label>Categoria *</label>
-                  <div id="categoriasContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px;">
+                  <div
+                    id="categoriasContainer"
+                    style="
+                      display: grid;
+                      grid-template-columns: repeat(
+                        auto-fit,
+                        minmax(120px, 1fr)
+                      );
+                      gap: 8px;
+                    "
+                  >
                     <!-- Checkboxes serão inseridos aqui via JavaScript -->
                   </div>
                 </div>
@@ -165,7 +184,12 @@
                 </div>
 
                 <div class="form-actions">
-                  <button type="submit" id="btnSalvar" class="primary" style="flex: 1">
+                  <button
+                    type="submit"
+                    id="btnSalvar"
+                    class="primary"
+                    style="flex: 1"
+                  >
                     ✅ Salvar livro
                   </button>
                   <button type="reset">Limpar</button>
@@ -309,18 +333,37 @@
         </div>
         <div class="modal-actions">
           <button onclick="fecharModal()" style="flex: 1">Fechar</button>
-          <button class="primary" onclick="editarLivro()" style="flex: 1">
+          <button id="btnEditarModal" class="primary" onclick="editarLivro()" style="flex: 1">
             ✏️ Editar
           </button>
-          <button class="danger" onclick="deletarLivro()" style="flex: 1">
+          <button id="btnDeletarModal" class="danger" onclick="deletarLivro()" style="flex: 1">
             🗑️ Deletar
           </button>
         </div>
       </div>
     </div>
 
+    <!-- LOGIN OVERLAY -->
+    <div id="loginOverlay" class="login-overlay">
+      <div class="login-card">
+        <div class="login-logo">📚</div>
+        <h1 class="login-title">Biblioteca</h1>
+        <p class="login-subtitle">Catálogo de Livros</p>
+        <div id="googleSignInButton" style="display:flex; justify-content:center; margin-bottom:8px;"></div>
+        <div id="loginSemAuth" style="margin-top:12px; display:none;">
+          <button
+            onclick="continuarSemLogin()"
+            style="background:none; border:none; color:var(--color-text-light); cursor:pointer; font-size:13px; text-decoration:underline; padding:0;"
+          >
+            Continuar sem login (somente leitura)
+          </button>
+        </div>
+        <p id="loginStatus" class="login-status"></p>
+      </div>
+    </div>
+
     <!-- LOADING OVERLAY -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div id="loadingOverlay" class="loading-overlay" style="display: none">
       <div class="loading-content">
         <div class="loading-spinner"></div>
         <div class="loading-text">Salvando livro...</div>

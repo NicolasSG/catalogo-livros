@@ -19,7 +19,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
   background: var(--color-bg-light);
   color: var(--color-text-dark);
   line-height: 1.6;
@@ -407,8 +408,12 @@ body {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -674,6 +679,129 @@ button.danger:hover {
 
 .flex-fill {
   flex: 1;
+}
+
+/* ============================================
+   LOGIN OVERLAY
+   ============================================ */
+
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #3b82f6 100%);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: var(--color-bg-white);
+  border-radius: 16px;
+  padding: 48px 40px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.login-logo {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-dark);
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--color-text-light);
+  margin-bottom: 32px;
+}
+
+.login-status {
+  font-size: 12px;
+  color: var(--color-text-light);
+  margin-top: 16px;
+  min-height: 20px;
+}
+
+/* ============================================
+   USER INFO (HEADER)
+   ============================================ */
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 8px;
+  border-left: 1px solid var(--color-border);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.user-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-dark);
+  white-space: nowrap;
+}
+
+.role-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.role-admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.role-editor {
+  background: #dbeafe;
+  color: var(--color-primary);
+}
+
+.role-visualizador {
+  background: #f3f4f6;
+  color: var(--color-text-light);
+}
+
+.btn-logout {
+  font-size: 12px;
+  padding: 6px 12px;
+  color: var(--color-text-light);
+  border-color: var(--color-border);
+  white-space: nowrap;
+}
+
+.btn-logout:hover {
+  background: #fee2e2;
+  color: var(--color-danger);
+  border-color: #fecaca;
 }
 
 @media (max-width: 768px) {
